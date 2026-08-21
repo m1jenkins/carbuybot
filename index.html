@@ -144,14 +144,16 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.15;font-weight:700;color:var(--ink)
   transition:all .18s ease;border:1px solid transparent;cursor:pointer;
 }
 .btn-primary{
-  background:linear-gradient(180deg,var(--accent),var(--accent-deep));
-  color:#fff;box-shadow:0 1px 2px rgba(79,70,229,.4),inset 0 1px 0 rgba(255,255,255,.18);
+  background:var(--accent);
+  color:#fff;box-shadow:0 1px 2px rgba(79,70,229,.35);
 }
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px -8px rgba(79,70,229,.55)}
+.btn-primary:hover{background:var(--accent-deep);box-shadow:0 6px 16px -6px rgba(79,70,229,.5)}
 .btn-ghost{border-color:var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
-.btn-ghost:hover{border-color:#cdd2df;transform:translateY(-1px)}
+.btn-ghost:hover{border-color:#cdd2df}
 .btn-light{background:#fff;color:var(--ink)}
-.btn-light:hover{transform:translateY(-1px);box-shadow:0 8px 24px -8px rgba(0,0,0,.4)}
+.btn-light:hover{background:#eceef4}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 
 header{
   position:sticky;top:0;z-index:50;
@@ -169,16 +171,9 @@ header{
 .nav .btn{padding:9px 18px;font-size:14px;border-radius:10px}
 
 .hero{
-  position:relative;overflow:hidden;text-align:center;
+  position:relative;text-align:center;
   padding:96px 0 72px;
 }
-.hero::before{
-  content:"";position:absolute;inset:-40% -20% auto;height:130%;pointer-events:none;
-  background:
-    radial-gradient(600px 320px at 50% 0%,rgba(79,70,229,.09),transparent 65%),
-    radial-gradient(420px 260px at 18% 22%,rgba(4,120,87,.05),transparent 60%);
-}
-.hero>.container{position:relative}
 .hero-badge{
   display:inline-flex;align-items:center;gap:8px;
   font-size:13px;font-weight:500;color:var(--ink-soft);
@@ -207,7 +202,7 @@ header{
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);}
 .stat{padding:36px 24px;text-align:center}
 .stat + .stat{border-left:1px solid var(--line)}
-.stat b{display:block;font-size:clamp(26px,3.4vw,36px);font-weight:700;letter-spacing:-.02em}
+.stat b{display:block;font-size:clamp(26px,3.4vw,36px);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .stat b.green{color:var(--green)}
 .stat b.accent{color:var(--accent)}
 .stat span{font-size:14px;color:var(--muted)}
@@ -237,12 +232,7 @@ section{padding:104px 0}
   color:var(--green);background:var(--green-tint);padding:4px 10px;border-radius:999px;
 }
 
-.negotiate{background:var(--dark);color:#fff;position:relative;overflow:hidden}
-.negotiate::before{
-  content:"";position:absolute;top:-200px;left:50%;transform:translateX(-50%);
-  width:900px;height:520px;pointer-events:none;
-  background:radial-gradient(closest-side,rgba(79,70,229,.28),transparent);
-}
+.negotiate{background:var(--dark);color:#fff}
 .negotiate .section-head h2,.negotiate .section-head p{color:#fff}
 .negotiate .section-head p{color:#a6adc2}
 .neg-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:64px;align-items:center;position:relative}
@@ -256,7 +246,7 @@ section{padding:104px 0}
   border-bottom:1px solid rgba(255,255,255,.1);
   font-size:13.5px;font-weight:600;color:#c3c9da;
 }
-.chat-head .pulse{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.2)}
+.chat-head .status-dot{width:8px;height:8px;border-radius:50%;background:#6b7490;flex:none}
 .bubble{
   max-width:86%;padding:13px 17px;border-radius:16px;font-size:14.5px;line-height:1.55;
 }
@@ -264,8 +254,8 @@ section{padding:104px 0}
   align-self:flex-start;background:rgba(255,255,255,.08);color:#dbe0ec;border-bottom-left-radius:4px;
 }
 .bubble.agent{
-  align-self:flex-end;background:linear-gradient(180deg,var(--accent),var(--accent-deep));
-  color:#fff;border-bottom-right-radius:4px;box-shadow:0 4px 16px -4px rgba(79,70,229,.45);
+  align-self:flex-end;background:var(--accent);
+  color:#fff;border-bottom-right-radius:4px;
 }
 .bubble .who{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.65;margin-bottom:4px}
 .outcomes h3{font-size:24px;color:#fff;margin-bottom:22px}
@@ -293,20 +283,20 @@ table.compare{width:100%;border-collapse:separate;border-spacing:0;min-width:760
 .compare .yes{color:var(--green);font-weight:600}
 .compare .no{color:var(--faint)}
 .compare .us-price{font-weight:700;color:var(--accent-deep)}
-.table-footnote{text-align:center;font-size:13px;color:var(--faint);margin-top:16px}
+.table-footnote{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
 
 .pricing-wrap{max-width:560px;margin:0 auto}
 .price-card{
   background:var(--surface);border:1px solid var(--line);border-radius:24px;
   padding:48px;box-shadow:var(--shadow-md);text-align:center;position:relative;overflow:hidden;
 }
-.price-card::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--accent),#8b5cf6)}
+.price-card::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--accent)}
 .price-flag{
   display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--accent-deep);background:var(--accent-tint);border-radius:999px;padding:6px 14px;margin-bottom:20px;
 }
 .price-line{display:flex;align-items:baseline;justify-content:center;gap:12px;margin-bottom:6px}
-.price-line .amount{font-size:64px;font-weight:700;letter-spacing:-.03em}
+.price-line .amount{font-size:64px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .price-line s{font-size:22px;color:var(--faint)}
 .price-note{font-size:14px;color:var(--muted);margin-bottom:32px}
 .includes{list-style:none;text-align:left;display:flex;flex-direction:column;gap:13px;margin-bottom:36px}
@@ -338,13 +328,8 @@ details[open] summary::after{transform:rotate(45deg)}
 details .answer{padding:0 24px 22px;font-size:15.5px;color:var(--muted)}
 
 .final{
-  background:var(--dark);color:#fff;text-align:center;position:relative;overflow:hidden;
+  background:var(--dark);color:#fff;text-align:center;
   padding:120px 0;
-}
-.final::before{
-  content:"";position:absolute;inset:auto -10% -60%;
-  height:120%;pointer-events:none;
-  background:radial-gradient(700px 380px at 50% 100%,rgba(79,70,229,.3),transparent 70%);
 }
 .final>.container{position:relative}
 .final h2{font-size:clamp(32px,4.6vw,50px);color:#fff;max-width:720px;margin:0 auto 18px}
@@ -377,6 +362,21 @@ footer .logo b{color:#fff}
 .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
 .reveal.in{opacity:1;transform:none}
 
+.mobile-cta{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+  align-items:center;justify-content:space-between;gap:14px;
+  padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+  transform:translateY(102%);transition:transform .25s ease;
+}
+.mobile-cta.show{transform:none}
+.mobile-cta .mc-price{display:flex;flex-direction:column;line-height:1.2}
+.mobile-cta .mc-price b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.mobile-cta .mc-price span{font-size:12px;color:var(--muted)}
+.mobile-cta .btn{padding:11px 20px;font-size:15px;border-radius:10px}
+
 @media(max-width:960px){
   .neg-grid{grid-template-columns:1fr;gap:40px}
   .steps{grid-template-columns:1fr;max-width:560px;margin:0 auto}
@@ -389,6 +389,8 @@ footer .logo b{color:#fff}
   .stat+.stat{border-left:none;border-top:1px solid var(--line)}
   .price-card{padding:36px 26px}
   .start-form{flex-direction:column}
+  body{padding-bottom:76px}
+  .mobile-cta{display:flex}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -417,7 +419,7 @@ footer .logo b{color:#fff}
     </a>
     <nav class="nav-links" aria-label="Primary">
       <a href="#how">How it works</a>
-      <a href="#negotiation">See a negotiation</a>
+      <a href="#negotiation">Sample negotiation</a>
       <a href="#compare">Compare</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
@@ -440,7 +442,7 @@ footer .logo b{color:#fff}
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="#start">Start my search</a>
-        <a class="btn btn-ghost" href="#negotiation">See a real negotiation →</a>
+        <a class="btn btn-ghost" href="#negotiation">See a sample negotiation →</a>
       </div>
       <div class="trust-strip">
         <span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Buyer-funded only</span>
@@ -489,27 +491,28 @@ footer .logo b{color:#fff}
   <section id="negotiation" class="negotiate">
     <div class="container">
       <div class="section-head reveal">
-        <span class="eyebrow" style="color:#a5b4fc">Live example</span>
+        <span class="eyebrow" style="color:#a5b4fc">From a live deal</span>
         <h2>Watch an agent <span class="fx">earn its fee</span></h2>
-        <p>A real exchange, condensed. This is what "negotiated for you" actually looks like.</p>
+        <p>A real negotiation, condensed. Names and the dealership anonymized — every word below is the agent's.</p>
       </div>
       <div class="neg-grid">
-        <div class="chat reveal" role="img" aria-label="Example negotiation between a dealer and your CarBuyerBots agent">
-          <div class="chat-head"><span class="pulse"></span> Negotiation in progress — 6 of 11 dealers responding</div>
-          <div class="bubble dealer"><span class="who">Dealer</span>We can do $32,995 plus fees.</div>
-          <div class="bubble agent"><span class="who">Your agent, on behalf of Mike</span>That includes a $895 "protection package" Mike didn't ask for. Remove it. Comparable out-the-door offers in his area are at $31,400. If you can beat that today, he's ready to buy this week.</div>
-          <div class="bubble dealer"><span class="who">Dealer</span>Best we can do is $31,650 out the door.</div>
-          <div class="bubble agent"><span class="who">Your agent</span>Two other dealers are at $31,450. Match $31,300 and the deal is yours.</div>
+        <div class="chat reveal" role="img" aria-label="Condensed real negotiation between a dealer and your CarBuyerBots agent">
+          <div class="chat-head"><span class="status-dot"></span> Real email negotiation — 7 messages · 2025 Genesis GV80 3.5T Prestige</div>
+          <div class="bubble dealer"><span class="who">Dealer</span>I received your offer of $60,183 plus tax and title. I'll review it with my management team and see how close we can get.</div>
+          <div class="bubble agent"><span class="who">Your agent</span>While management looks — does that Prestige include the tow hitch, illuminated door scuff plates, fitted liners, and mudguards? If not, what would they cost to add?</div>
+          <div class="bubble dealer"><span class="who">Dealer</span>Best we can do is $62,700 plus tax and title. Those items would be aftermarket rather than factory. If $62,700 works, we can move forward, including the deposit.</div>
+          <div class="bubble agent"><span class="who">Your agent</span>We'll look at $62,700. No deposit for now — send pricing on those four items. Also, can you arrange shipping to Dallas?</div>
+          <div class="bubble dealer"><span class="who">Dealer</span>We don't offer delivery — the vehicle would need to be picked up here, or you're welcome to arrange your own transport.</div>
         </div>
         <div class="outcomes reveal">
-          <h3>What happened in four messages</h3>
+          <h3>What happened in seven messages</h3>
           <ul>
-            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Junk fees removed</b> — the $895 add-on Mike never asked for, gone.</span></li>
-            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Market leverage applied</b> — competing offers cited by number, not vibes.</span></li>
-            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Deadline pressure created</b> — "ready to buy this week" moves numbers.</span></li>
-            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Mike never picked up the phone.</b> Zero hours spent haggling.</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Anchored in writing</b> — a precise $60,183 opener framed the whole range.</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Equipment verified before price</b> — no surprise add-on math later.</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Deposit pressure declined</b> — leverage kept until the numbers were final.</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Logistics handled</b> — shipping, accessories, and pickup coordinated by email.</span></li>
           </ul>
-          <div class="savings-pill"><b>$1,695 saved</b><span>from first quote to approved out-the-door price</span></div>
+          <div class="savings-pill"><b>$2,517</b><span>between the opening offer and the dealer's counter — in under 24 hours</span></div>
         </div>
       </div>
     </div>
@@ -696,10 +699,25 @@ footer .logo b{color:#fff}
   </div>
 </footer>
 
+<div class="mobile-cta" id="mobile-cta" aria-hidden="false">
+  <span class="mc-price"><b>$349 flat</b><span>per car · save more or it's free</span></span>
+  <a class="btn btn-primary" href="#start">Start my search</a>
+</div>
+
 <script>
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 document.getElementById('year').textContent=new Date().getFullYear();
+const mcta=document.getElementById('mobile-cta');
+const endZone=document.getElementById('start');
+let endVisible=false;
+new IntersectionObserver(es=>{
+  endVisible=es[0].isIntersecting;
+  mcta.classList.toggle('show',window.scrollY>560&&!endVisible);
+},{threshold:.15}).observe(endZone);
+addEventListener('scroll',()=>{
+  mcta.classList.toggle('show',window.scrollY>560&&!endVisible);
+},{passive:true});
 const WEB3FORMS_ACCESS_KEY='84a08327-ee5b-4ad2-a232-2f07662727c8';
 const leadForm=document.getElementById('lead-form');
 const formStatus=document.getElementById('form-status');
