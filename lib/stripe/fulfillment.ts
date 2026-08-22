@@ -68,6 +68,12 @@ export async function fulfillCheckoutSession(
     throw new Error("Only test-mode Checkout Sessions can be fulfilled");
   }
 
+  if (session.mode !== "payment") {
+    return resultForInserted(
+      await persist(eventOnlyInput(context.eventId, context.eventType)),
+    );
+  }
+
   if (session.payment_status !== "paid") {
     return resultForInserted(
       await persist(eventOnlyInput(context.eventId, context.eventType)),

@@ -37,6 +37,7 @@ describe("Checkout result pages", () => {
       customer_details: { email: "buyer@example.com" },
       customer_email: null,
       id: "cs_test_paid_fixture_123",
+      mode: "payment",
       payment_status: "paid",
     });
 
@@ -67,6 +68,7 @@ describe("Checkout result pages", () => {
       customer_details: { email: "buyer@example.com" },
       customer_email: null,
       id: "cs_test_processing",
+      mode: "payment",
       payment_status: "unpaid",
     });
 
@@ -81,6 +83,34 @@ describe("Checkout result pages", () => {
     expect(
       screen.getByRole("heading", { name: /payment is processing/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByTestId("magic-link")).not.toBeInTheDocument();
+  });
+
+  it("does not show onboarding for a paid subscription-mode session", async () => {
+    mocks.retrieve.mockResolvedValue({
+      amount_total: 34_900,
+      currency: "usd",
+      customer_details: { email: "buyer@example.com" },
+      customer_email: null,
+      id: "cs_test_subscription",
+      mode: "subscription",
+      payment_status: "paid",
+    });
+
+    render(
+      await SuccessPage({
+        searchParams: Promise.resolve({
+          session_id: "cs_test_subscription",
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /not supported/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /payment confirmed/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("magic-link")).not.toBeInTheDocument();
   });
 

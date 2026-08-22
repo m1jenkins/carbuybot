@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { normalizeEmail } from "@/lib/domain/engagement";
-import { getAppUrl } from "@/lib/env";
+import { getAppUrl, getStripePriceIds } from "@/lib/env";
 import { getStripe } from "@/lib/stripe/client";
 import { choosePrice, getPriceAmountCents } from "@/lib/stripe/pricing";
 import {
@@ -29,9 +29,10 @@ export async function POST(request: Request) {
 
   try {
     const appUrl = getAppUrl();
+    const priceIds = getStripePriceIds();
     const stripe = getStripe();
     const paidCount = await countPaidEngagements();
-    const price = choosePrice(paidCount);
+    const price = choosePrice(paidCount, priceIds);
     const engagement = await createPendingEngagement({
       amountCents: getPriceAmountCents(price.label),
       currency: "usd",

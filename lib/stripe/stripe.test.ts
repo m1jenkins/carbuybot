@@ -32,6 +32,7 @@ const paidSession = {
     price_id: "price_intro_test",
   },
   livemode: false,
+  mode: "payment",
   payment_intent: "pi_test_payment",
   payment_status: "paid",
 } as unknown as Stripe.Checkout.Session;
@@ -65,14 +66,23 @@ describe("Stripe test-mode guard", () => {
     vi.unstubAllEnvs();
   });
 
-  it.each(["sk_live_example", "rk_live_example"])(
-    "rejects live Stripe key %s",
+  it.each([
+    "sk_live_example",
+    "rk_live_example",
+    "rkcs_live_example",
+    "pk_live_example",
+    "pk_test_example",
+    "sk_sandbox_example",
+    "rk_sandbox_example",
+    "whsec_example",
+  ])(
+    "rejects live or non-secret test Stripe key %s",
     (key) => {
       expect(() => assertTestStripeKey(key)).toThrow(/test-mode/i);
     },
   );
 
-  it.each(["sk_test_example", "rk_test_example"])(
+  it.each(["sk_test_example", "rk_test_example", "rkcs_test_example"])(
     "accepts test Stripe key %s",
     (key) => {
       expect(assertTestStripeKey(key)).toBe(key);
@@ -175,6 +185,44 @@ describe("Stripe event fulfillment", () => {
     expect(memory.calls[0]).toMatchObject({
       eventId: "evt_test_unpaid",
       fulfill: false,
+    });
+  });
+
+  it("acknowledges subscription-mode completed events without fulfillment", async () => {
+    const memory = createMemoryPersistence();
+    const subscriptionEvent = {
+      ...completedEvent,
+      id: "evt_test_subscription",
+      data: {
+        object: {
+          ...paidSession,
+          customer: null,
+          customer_details: null,
+          metadata: {},
+          mode: "subscription",
+          payment_intent: null,
+        },
+      },
+    } as Stripe.Event;
+
+    await expect(processEvent(subscriptionEvent, memory.persist)).resolves.toBe(
+      "processed",
+    );
+    await expect(processEvent(subscriptionEvent, memory.persist)).resolves.toBe(
+      "duplicate",
+    );
+    expect(memory.calls[0]).toEqual({
+      amountCents: null,
+      checkoutSessionId: null,
+      currency: null,
+      customerEmail: null,
+      customerId: null,
+      engagementId: null,
+      eventId: "evt_test_subscription",
+      eventType: "checkout.session.completed",
+      fulfill: false,
+      paymentIntentId: null,
+      priceId: null,
     });
   });
 

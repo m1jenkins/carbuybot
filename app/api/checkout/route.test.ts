@@ -139,4 +139,21 @@ describe("POST /api/checkout", () => {
     expect(mocks.createPendingEngagement).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
+
+  it("validates Stripe Price configuration before the paid-count query", async () => {
+    vi.stubEnv("STRIPE_PRICE_INTRO_ID", "");
+
+    const response = await POST(
+      new Request("https://carbuyerbots.test/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "buyer@example.com" }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(mocks.countPaidEngagements).not.toHaveBeenCalled();
+    expect(mocks.createPendingEngagement).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
 });

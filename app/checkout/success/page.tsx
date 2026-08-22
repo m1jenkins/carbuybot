@@ -38,7 +38,8 @@ export default async function SuccessPage({
     }
   }
 
-  const isPaid = session?.payment_status === "paid";
+  const isPaymentSession = session?.mode === "payment";
+  const isPaid = isPaymentSession && session?.payment_status === "paid";
   const email =
     session?.customer_details?.email ?? session?.customer_email ?? "";
   const amount = session
@@ -66,6 +67,20 @@ export default async function SuccessPage({
               one-time sign-in link and continue with your vehicle brief.
             </p>
             <MagicLinkForm defaultEmail={email} />
+          </section>
+        ) : session && !isPaymentSession ? (
+          <section className="result-copy" aria-labelledby="checkout-result">
+            <span className="label">Checkout status</span>
+            <h1 className="d2" id="checkout-result">
+              This checkout mode is not supported.
+            </h1>
+            <p className="lede">
+              This portal accepts one-time payments only. No onboarding access
+              has been created from this checkout.
+            </p>
+            <Link className="btn btn--line" href="/">
+              Return home
+            </Link>
           </section>
         ) : session ? (
           <section className="result-copy" aria-labelledby="checkout-result">

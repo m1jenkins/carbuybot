@@ -1,13 +1,17 @@
 import { getStripePriceIds } from "../env";
 
 export type PriceLabel = "intro" | "standard";
+type StripePriceIds = ReturnType<typeof getStripePriceIds>;
 
 const priceAmounts: Record<PriceLabel, number> = {
   intro: 34_900,
   standard: 39_900,
 };
 
-export function choosePrice(paidCount: number): {
+export function choosePrice(
+  paidCount: number,
+  priceIds: StripePriceIds = getStripePriceIds(),
+): {
   priceId: string;
   label: PriceLabel;
 } {
@@ -19,7 +23,7 @@ export function choosePrice(paidCount: number): {
 
   return {
     label,
-    priceId: getStripePriceIds()[label],
+    priceId: priceIds[label],
   };
 }
 
