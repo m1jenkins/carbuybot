@@ -138,7 +138,16 @@ ul,ol{margin:0;padding:0;list-style:none}
 .plate__media{position:absolute;inset:-1px;z-index:1}
 .plate__media picture{display:contents}
 .plate__media img{width:100%;height:100%;object-fit:cover;object-position:50% 58%}
-.hero .plate__media img{object-position:50% 46%}
+.hero .plate__media img{object-position:50% 50%}
+/* daylight lot fallback: slightly lifted asphalt so a missing photo is not pitch black */
+.hero.plate{
+  background-color:#1C2124;
+  background-image:
+    radial-gradient(118% 86% at 20% 6%, #4A5560 0%, rgba(74,85,96,0) 58%),
+    radial-gradient(74% 58% at 86% 16%, #5A5044 0%, rgba(90,80,68,0) 55%),
+    radial-gradient(120% 70% at 50% 108%, #2C3236 0%, rgba(44,50,54,0) 62%),
+    linear-gradient(180deg,#2A3036 0%,#1C2124 56%,#14181B 100%);
+}
 .plate__scrim{position:absolute;inset:0;z-index:3;pointer-events:none}
 .plate__body{position:relative;z-index:4}
 
@@ -163,8 +172,8 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero{min-height:min(100svh,940px);height:auto;display:flex;align-items:stretch}
 .hero .plate__scrim{
   background:
-    linear-gradient(180deg,rgba(8,9,10,.58) 0%,rgba(8,9,10,.12) 26%,rgba(8,9,10,.28) 52%,rgba(8,9,10,.9) 100%),
-    linear-gradient(90deg,rgba(8,9,10,.62) 0%,rgba(8,9,10,.18) 46%,rgba(8,9,10,.55) 100%);
+    linear-gradient(180deg,rgba(8,9,10,.46) 0%,rgba(8,9,10,.08) 24%,rgba(8,9,10,.16) 50%,rgba(8,9,10,.76) 100%),
+    linear-gradient(90deg,rgba(8,9,10,.40) 0%,rgba(8,9,10,.08) 48%,rgba(8,9,10,.30) 100%);
 }
 .hero .plate__body{
   width:100%;min-height:min(100svh,940px);
@@ -173,8 +182,8 @@ ul,ol{margin:0;padding:0;list-style:none}
   padding-block:clamp(96px,12vh,128px) clamp(36px,6vh,72px);
 }
 .hero-copy{min-width:0}
-/* the eyebrow can land on the headlights — it needs more than the muted tone */
-.hero .label{color:rgba(242,241,238,.74);text-wrap:balance}
+/* the eyebrow sits on bright car roofs — keep it off the muted-on-dark token */
+.hero .label{color:rgba(242,241,238,.82);text-wrap:balance}
 .hero .d1{max-width:min(14ch,100%);margin-top:18px;font-size:clamp(36px,5.2vw,76px)}
 .hero .d1 span{display:block}
 .hero .lede{max-width:min(36ch,100%);margin-top:22px;overflow-wrap:break-word}
@@ -924,14 +933,14 @@ html:not(.js) .rv{opacity:1;transform:none}
   .hero .d1 span{display:inline}
   .hero .lede{margin-top:16px;font-size:16px}
   .hero-act{margin-top:22px}
-  /* portrait: keep the headlights clear; type and the log sit in the lower wash */
+  /* portrait: let the lot read in the upper half; type and the log sit in the lower wash */
   .hero .plate__scrim{background:linear-gradient(180deg,
-    rgba(8,9,10,.34) 0%,
-    rgba(8,9,10,.04) 12%,
-    rgba(8,9,10,.08) 28%,
-    rgba(8,9,10,.55) 48%,
-    rgba(8,9,10,.9) 74%,
-    rgba(8,9,10,.96) 100%)}
+    rgba(8,9,10,.32) 0%,
+    rgba(8,9,10,.06) 14%,
+    rgba(8,9,10,.10) 32%,
+    rgba(8,9,10,.42) 52%,
+    rgba(8,9,10,.78) 76%,
+    rgba(8,9,10,.88) 100%)}
   /* portrait: the timestamp takes its own line, since an entry would otherwise
      wrap twice. The log folds to the three entries that carry the whole arc —
      six dealers at once, a counter answered at night, and Mike approving the

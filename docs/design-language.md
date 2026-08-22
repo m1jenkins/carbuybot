@@ -78,8 +78,10 @@ The hero is art-directed per breakpoint: a portrait master for phones and a land
 720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
 actually used.
 
-Photography rules: documentary, cool-dark with warm counterpoints, no faces, and **no
-manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
+Photography rules: documentary, no faces, and **no manufacturer logos** — see
+`media/CREDITS.md` for why and for the credit list. The hero is a bright daylight
+inventory lot (an aerial frame so badges do not read as endorsement). Later plates stay
+cool-dark with warm counterpoints.
 
 ## Component rules
 
