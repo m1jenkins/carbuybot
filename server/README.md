@@ -1,14 +1,16 @@
 # Stripe server (Payments + Invoicing)
 
-Node process that sits next to the static CarBuyerBots landing page.
+Node process next to the static CarBuyerBots landing page. Test/sandbox only until Mason explicitly goes live.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` at the repo root and fill in Stripe keys.
+1. Copy `.env.example` to `.env`. Use a **restricted test key** from the Car Buying Bot sandbox. Never commit `.env`.
 2. `cd server && npm install`
-3. `npm run bootstrap` — creates the $349 intro and $399 standard Products/Prices. Paste the printed IDs into `.env`.
-4. Forward webhooks: `stripe listen --forward-to localhost:4242/api/webhooks/stripe` and set `STRIPE_WEBHOOK_SECRET`.
-5. `npm start` — landing page at `http://localhost:4242`, Checkout at `/pay/`.
+3. `npm run bootstrap` — creates the $349 intro and $399 standard Products/Prices. Paste IDs into `.env`.
+4. `stripe listen --forward-to localhost:4242/api/webhooks/stripe` and set `STRIPE_WEBHOOK_SECRET`.
+5. `npm start` — site at `http://localhost:4242`, Checkout at `/pay/`.
+
+Do not enable Stripe Tax. Do not send live charges.
 
 ## API
 
@@ -19,6 +21,6 @@ Node process that sits next to the static CarBuyerBots landing page.
 | POST | `/api/webhooks/stripe` | Stripe | Signature-verified fulfillment. |
 | POST | `/api/admin/refunds` | Operator (`x-admin-key`) | Full refund for the savings guarantee. |
 
-Request bodies are JSON: `{ "email", "name?" }` for checkout/invoices; `{ "engagementId" }` for refunds.
-
 Never send amounts from the browser. Catalog lives in Stripe Prices.
+
+See `docs/stripe-integration-plan.md` for the MCP review and Mason-only remaining items.

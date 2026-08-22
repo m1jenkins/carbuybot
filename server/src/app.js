@@ -2,6 +2,7 @@ const path = require('node:path');
 const express = require('express');
 const Stripe = require('stripe');
 const { handleStripeEvent } = require('./fulfill');
+const { secretsEqual } = require('./auth');
 const {
   isValidEmail,
   randomLetters,
@@ -10,6 +11,8 @@ const {
   priceLabel,
 } = require('./pricing');
 
+const INVOICE_ITEM_DESCRIPTION = 'CarBuyerBots car buying engagement — one vehicle';
+
 function createApp({ stripe, store, config, staticRoot }) {
   const app = express();
 
@@ -17,6 +20,9 @@ function createApp({ stripe, store, config, staticRoot }) {
     '/api/webhooks/stripe',
     express.raw({ type: 'application/json' }),
     (req, res) => {
+      if (!config.webhookSecret) {
+        return res.status(503).json({ error: 'Webhook signing secret is not configured' });
+      }
       const signature = req.headers['stripe-signature'];
       let event;
       try {
@@ -87,8 +93,7 @@ function createApp({ stripe, store, config, staticRoot }) {
   });
 
   app.post('/api/invoices', async (req, res) => {
-    const adminKey = req.headers['x-admin-key'];
-    if (!config.adminApiKey || adminKey !== config.adminApiKey) {
+    if (!secretsEqual(req.headers['x-admin-key'], config.adminApiKey)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const email = String(req.body?.email || '').trim().toLowerCase();
@@ -109,29 +114,43 @@ function createApp({ stripe, store, config, staticRoot }) {
     });
 
     try {
-      const customer = await stripe.customers.create({
-        email,
-        name: name || undefined,
-        metadata: { engagement_id: engagement.id },
-      });
-      await stripe.invoiceItems.create({
-        customer: customer.id,
-        pricing: { price: priceId },
-        quantity: 1,
-      });
-      const invoice = await stripe.invoices.create({
-        customer: customer.id,
-        collection_method: 'send_invoice',
-        days_until_due: 7,
-        pending_invoice_items_behavior: 'include',
-        metadata: {
-          engagement_id: engagement.id,
-          price_id: priceId,
-          product: 'car_buying_engagement',
+      const customer = await stripe.customers.create(
+        {
+          email,
+          name: name || undefined,
+          metadata: { engagement_id: engagement.id },
         },
+        { idempotencyKey: `customer:${engagement.id}` },
+      );
+      await stripe.invoiceItems.create(
+        {
+          customer: customer.id,
+          pricing: { price: priceId },
+          quantity: 1,
+          description: INVOICE_ITEM_DESCRIPTION,
+        },
+        { idempotencyKey: `invoiceitem:${engagement.id}` },
+      );
+      const invoice = await stripe.invoices.create(
+        {
+          customer: customer.id,
+          collection_method: 'send_invoice',
+          days_until_due: 7,
+          pending_invoice_items_behavior: 'include',
+          metadata: {
+            engagement_id: engagement.id,
+            price_id: priceId,
+            product: 'car_buying_engagement',
+          },
+        },
+        { idempotencyKey: `invoice:${engagement.id}` },
+      );
+      await stripe.invoices.finalizeInvoice(invoice.id, undefined, {
+        idempotencyKey: `invoice-finalize:${engagement.id}`,
       });
-      await stripe.invoices.finalizeInvoice(invoice.id);
-      const sent = await stripe.invoices.sendInvoice(invoice.id);
+      const sent = await stripe.invoices.sendInvoice(invoice.id, undefined, {
+        idempotencyKey: `invoice-send:${engagement.id}`,
+      });
       store.upsertEngagement(engagement.id, {
         customerId: customer.id,
         invoiceId: invoice.id,
@@ -150,8 +169,7 @@ function createApp({ stripe, store, config, staticRoot }) {
   });
 
   app.post('/api/admin/refunds', async (req, res) => {
-    const adminKey = req.headers['x-admin-key'];
-    if (!config.adminApiKey || adminKey !== config.adminApiKey) {
+    if (!secretsEqual(req.headers['x-admin-key'], config.adminApiKey)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const engagementId = String(req.body?.engagementId || '').trim();
@@ -160,14 +178,17 @@ function createApp({ stripe, store, config, staticRoot }) {
       return res.status(404).json({ error: 'Paid engagement not found' });
     }
     try {
-      const refund = await stripe.refunds.create({
-        payment_intent: engagement.paymentIntentId,
-        reason: 'requested_by_customer',
-        metadata: {
-          engagement_id: engagementId,
-          guarantee: 'save_more_than_fee_or_free',
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: engagement.paymentIntentId,
+          reason: 'requested_by_customer',
+          metadata: {
+            engagement_id: engagementId,
+            guarantee: 'save_more_than_fee_or_free',
+          },
         },
-      });
+        { idempotencyKey: `refund:${engagementId}` },
+      );
       store.upsertEngagement(engagementId, { status: 'refunded', refundId: refund.id });
       return res.json({ refundId: refund.id });
     } catch {
@@ -185,4 +206,4 @@ function createApp({ stripe, store, config, staticRoot }) {
   return app;
 }
 
-module.exports = { createApp };
+module.exports = { createApp, INVOICE_ITEM_DESCRIPTION };

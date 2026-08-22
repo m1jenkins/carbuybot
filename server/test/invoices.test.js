@@ -4,27 +4,29 @@ const { createApp } = require('../src/app');
 const { createMemoryStore } = require('../src/store');
 
 function mockStripe() {
-  const calls = { customers: [], invoiceItems: [], invoices: [], finalized: [], sent: [] };
+  const calls = { customers: [], invoiceItems: [], invoices: [], finalized: [], sent: [], options: [] };
   let customerN = 0;
   let invoiceN = 0;
   return {
     calls,
     customers: {
-      create: async (params) => {
+      create: async (params, options) => {
         customerN += 1;
         const customer = { id: `cus_${customerN}`, ...params };
         calls.customers.push(params);
+        calls.options.push(['customer', options]);
         return customer;
       },
     },
     invoiceItems: {
-      create: async (params) => {
+      create: async (params, options) => {
         calls.invoiceItems.push(params);
+        calls.options.push(['invoiceitem', options]);
         return { id: 'ii_1', ...params };
       },
     },
     invoices: {
-      create: async (params) => {
+      create: async (params, options) => {
         invoiceN += 1;
         const invoice = {
           id: `in_${invoiceN}`,
@@ -34,6 +36,7 @@ function mockStripe() {
           ...params,
         };
         calls.invoices.push(params);
+        calls.options.push(['invoice', options]);
         return invoice;
       },
       finalizeInvoice: async (id) => {
@@ -102,6 +105,8 @@ describe('POST /api/invoices', () => {
     assert.equal(stripe.calls.invoiceItems[0].pricing.price, 'price_intro');
     assert.equal(stripe.calls.invoiceItems[0].price, undefined);
     assert.equal(stripe.calls.invoiceItems[0].customer, 'cus_1');
+    assert.match(stripe.calls.invoiceItems[0].description, /CarBuyerBots/);
+    assert.equal(stripe.calls.options[0][1].idempotencyKey.startsWith('customer:'), true);
     assert.equal(stripe.calls.invoices[0].collection_method, 'send_invoice');
     assert.equal(stripe.calls.invoices[0].days_until_due, 7);
     assert.equal(stripe.calls.invoices[0].payment_method_types, undefined);

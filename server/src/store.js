@@ -15,6 +15,10 @@ function createMemoryStore(initial = { engagements: {}, processedEvents: [] }) {
     getEngagement(id) {
       return state.engagements[id] || null;
     },
+    findByPaymentIntent(paymentIntentId) {
+      if (!paymentIntentId) return null;
+      return Object.values(state.engagements).find((e) => e.paymentIntentId === paymentIntentId) || null;
+    },
     upsertEngagement(id, patch) {
       state.engagements[id] = { ...(state.engagements[id] || { id }), ...patch, id };
       return state.engagements[id];
@@ -74,6 +78,9 @@ function createFileStore(filePath) {
     },
     getEngagement(id) {
       return memory.getEngagement(id);
+    },
+    findByPaymentIntent(paymentIntentId) {
+      return memory.findByPaymentIntent(paymentIntentId);
     },
     upsertEngagement(id, patch) {
       const next = memory.upsertEngagement(id, patch);

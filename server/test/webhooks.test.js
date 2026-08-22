@@ -131,4 +131,40 @@ describe('POST /api/webhooks/stripe', () => {
     assert.equal(res.status, 200);
     assert.equal(store.getEngagement('eng_inv').status, 'paid');
   });
+
+  it('marks an engagement refunded from charge.refunded', async () => {
+    store.recordPaidEngagement({
+      id: 'eng_1',
+      email: 'buyer@example.com',
+      paymentIntentId: 'pi_1',
+    });
+    const res = await postWebhook(app, {
+      id: 'evt_refund_1',
+      type: 'charge.refunded',
+      data: {
+        object: {
+          object: 'charge',
+          id: 'ch_1',
+          payment_intent: 'pi_1',
+          refunds: { data: [{ id: 're_1' }] },
+        },
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(store.getEngagement('eng_1').status, 'refunded');
+  });
+
+  it('returns 503 when the webhook signing secret is missing', async () => {
+    const unconfigured = createApp({
+      stripe: {},
+      store: createMemoryStore(),
+      config: { ...config, webhookSecret: '' },
+    });
+    const res = await postWebhook(unconfigured, {
+      id: 'evt_x',
+      type: 'checkout.session.completed',
+      data: { object: {} },
+    });
+    assert.equal(res.status, 503);
+  });
 });

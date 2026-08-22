@@ -68,6 +68,19 @@ function handleStripeEvent(store, event) {
       }
       return { fulfilled: false, reason: 'failed' };
     }
+    case 'charge.refunded':
+    case 'refund.created': {
+      const obj = event.data.object;
+      const paymentIntentId = obj.payment_intent || obj.payment_intent_id;
+      const engagement = store.findByPaymentIntent?.(paymentIntentId);
+      if (engagement) {
+        store.upsertEngagement(engagement.id, {
+          status: 'refunded',
+          refundId: obj.object === 'refund' ? obj.id : obj.refunds?.data?.[0]?.id,
+        });
+      }
+      return { fulfilled: false, reason: 'refunded' };
+    }
     default:
       return { ignored: true };
   }

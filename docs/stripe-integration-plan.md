@@ -1,55 +1,57 @@
 # CarBuyerBots Stripe integration plan
 
-Tailored for **CarBuyerBots** (`carbuyerbots.com` / carbuyingbot.com): a buyer-funded AI car-buying agent with a **one-time per-car fee** ($349 intro for the first 100 customers, then $399), a **save-more-than-the-fee-or-it’s-free** guarantee, and no subscriptions.
+Reviewed **2026-08-22** against Stripe MCP (`stripe_implementation_planner` + live sandbox reads) on account **Car Buying Bot sandbox** (`acct_1U73NGEJNo16bmOR`, test mode).
 
-This plan was generated from Stripe’s current best-practices skills because `stripe_implementation_planner` is not usable until the Stripe MCP server at `https://mcp.stripe.com` is authenticated in Cursor.
+Business: buyer-funded AI car-buying agent. One-time per-car fee ($349 intro / $399). Charge after the brief is confirmed. Savings guarantee is a full refund. **Stripe Tax is out of scope** until Mason and counsel decide.
 
-## Products in scope
+## Planner decisions (accepted)
 
-| Need | Stripe product | How we use it |
-|---|---|---|
-| Collect the engagement fee when the buyer is on the site | **Payments** via [Checkout Sessions](https://docs.stripe.com/payments/checkout.md) (`mode: payment`) | Hosted Checkout. Dynamic payment methods (do **not** pass `payment_method_types`). |
-| Bill after the buyer confirms their brief, or send a professional invoice | **Invoicing** | `collection_method: send_invoice` plus hosted invoice page. Checkout also sets `invoice_creation.enabled` so card payments still produce a Stripe Invoice. |
+| Decision | Choice |
+|---|---|
+| Payment surface | Web, Stripe only |
+| On-session pay | Stripe-hosted Checkout (`mode: payment`) |
+| Off-session pay | Invoicing API on a business event (brief confirmed), Hosted Invoice Page |
+| Invoice creation | Automatic via API, not Dashboard-only |
+| Saved card on file | No — customer pays the hosted invoice |
+| Reconciliation | Stripe Dashboard (no ERP/warehouse yet) |
+| Managed Payments / Tax | No |
+| Subscriptions / Connect / car-purchase deposits | No |
 
-Not in v1: Billing subscriptions, Connect, Payment Element, Charges/Tokens/Sources.
+## Implementation (closed in this repo)
 
-## Money model
+- Hosted Checkout Sessions with **Price IDs only**, `invoice_creation.enabled`, no `payment_method_types`, `integration_identifier`.
+- Two Products/Prices once bootstrapped: intro $349 and standard $399. Intro cohort is counted from **paid** webhook records.
+- `send_invoice` Invoices with `pricing.price`, customer-visible line description, `engagement_id` metadata, idempotency keys.
+- Webhooks verify signatures on the raw body, skip duplicate `event.id`, fulfill Checkout only when `payment_status` is not `unpaid`, treat `invoice.paid` as settled, and mark `charge.refunded` / `refund.created`.
+- Admin refunds for the guarantee (`x-admin-key`, timing-safe compare). Dashboard refunds also land via webhook.
+- Secrets stay in `.env` (gitignored). Restricted keys preferred.
 
-- Two **Products** (intro vs standard). Stripe shows the Product name on invoices; different tiers must not share one Product.
-- One **Price** each: `34900` and `39900` USD. Checkout and Invoices always reference Price IDs — never a client-supplied amount.
-- Intro cohort: first **100 paid** engagements use the intro Price; later ones use standard. Count paid records from webhooks, not from button clicks.
-- Guarantee: full **Refund** on the PaymentIntent (`reason: requested_by_customer`, metadata `guarantee=save_more_than_fee_or_free`). Do not auto-refund from the public site.
+## Sandbox gap (not a code bug)
 
-## Customer journey
+MCP read of Mason’s connected **test** sandbox on 2026-08-22:
 
-1. Landing page captures email (existing Web3Forms lead). Copy stays: fee is due **after the brief is confirmed**.
-2. When the brief is confirmed, either:
-   - **On-session:** buyer opens `/pay` and we create a Checkout Session; or
-   - **Off-session:** an operator calls `POST /api/invoices` and Stripe emails a hosted invoice (due in 7 days).
-3. Webhooks mark the engagement **paid**. That is the source of truth — not the success page.
-4. If savings < fee, an operator issues a refund via `POST /api/admin/refunds`.
+- Products: **none**
+- Webhook endpoints: **none**
+- MCP session can **read** the account but **cannot create Products** (missing write permission on the connected key)
 
-## Required webhooks
+The earlier agent-provisioned sandbox is not this account and must not be treated as production. Do not invent keys. Keep test/sandbox mode until Mason claims or pastes his own restricted test key and runs bootstrap.
 
-Verify signatures with the raw body. Persist `event.id` and skip duplicates.
+## Webhook events to register (when Mason has a public URL)
 
 - `checkout.session.completed`
-- `checkout.session.async_payment_succeeded` (fulfill only when `payment_status` is not `unpaid`)
+- `checkout.session.async_payment_succeeded`
 - `checkout.session.async_payment_failed`
 - `invoice.paid`
 - `invoice.payment_failed`
+- `charge.refunded`
+- `refund.created`
 
-## Security
+Local: `stripe listen --forward-to localhost:4242/api/webhooks/stripe`
 
-- Restricted key (`rk_` / sandbox `rkcs_`) in the environment or a secrets vault — never in git or the browser.
-- Publishable key is only needed if we later embed Checkout; hosted Checkout does not require Stripe.js on the marketing site.
-- Admin invoice/refund routes require `x-admin-key`.
-- Do not enable `automatic_tax` until there is an **active** Stripe Tax registration. Service tax treatment for US car-buying assistance should be confirmed with counsel.
+## Still Mason-only
 
-## Go-live checklist
+1. **Sandbox / keys** — Claim or open the Car Buying Bot sandbox in the Dashboard, create a restricted test key, put it in gitignored `.env`. Then `cd server && npm run bootstrap` and paste the Price IDs.
+2. **Production (or even durable test) webhook** — After the server has an HTTPS URL, add the events above in Workbench and set `STRIPE_WEBHOOK_SECRET`.
+3. **Tax counsel** — Do not enable Stripe Tax or `automatic_tax` in this integration until a human decides.
 
-1. Claim the sandbox (or use a live Stripe account) and replace env keys.
-2. Create live Products/Prices (`npm run bootstrap` in `server/` with live keys).
-3. Register the webhook endpoint in Workbench; copy `STRIPE_WEBHOOK_SECRET`.
-4. Turn on the payment methods you want in the Dashboard (dynamic methods).
-5. Work through Stripe’s [Go Live Checklist](https://docs.stripe.com/get-started/checklist/go-live.md).
+This integration is **not production-ready** and must not take live charges until Mason says so.
