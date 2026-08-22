@@ -342,12 +342,16 @@ This repository is a Next.js App Router app. The production host
 old static landing page: it publishes the `public/` folder (logo, robots,
 images) and has no `index.html`, so `/` is a platform `NOT_FOUND`.
 
-`vercel.json` forces Framework Preset `nextjs` and Build Command `next build`.
-It does not set Output Directory. If a leftover dashboard override still wins,
+`vercel.json` forces Framework Preset `nextjs`, Build Command `next build`,
+and `outputDirectory: null` so Vercel auto-detects the Next.js output instead
+of publishing `public/`. If a leftover dashboard override still wins,
 Mason must:
 
 1. Open [Project Settings → General](https://vercel.com/m1jenkins-projects/carbuybot/settings/general).
-2. Under **Build & Development Settings**:
+2. Confirm **Root Directory** is the repository root (empty / `.`), not
+   `public`. Root Directory is dashboard-only; if it is `public`, Vercel
+   never sees this `vercel.json` and the git fix is a no-op.
+3. Under **Build & Development Settings**:
    - **Framework Preset:** Next.js. If Override is on and set to Other, turn
      Override off or set it to Next.js.
    - **Build Command:** leave the Next.js default (`next build`) or turn
@@ -356,10 +360,9 @@ Mason must:
      or `out`. Next.js owns this path.
    - **Install Command:** `npm ci` or the Next.js default. Do not skip
      install.
-   - **Root Directory:** repository root (empty / `.`).
-3. Disable any **Ignored Build Step** that skips the Next.js build.
-4. Set **Node.js Version** to 22.x so it matches `package.json` `engines`.
-5. Redeploy the latest production deployment. Uncheck **Use existing Build
+4. Disable any **Ignored Build Step** that skips the Next.js build.
+5. Set **Node.js Version** to 22.x so it matches `package.json` `engines`.
+6. Redeploy the latest production deployment. Uncheck **Use existing Build
    Cache** if the previous Ready deploy only uploaded `public/`.
 
 Do not invent or commit a Vercel token. Keep environment values in the Vercel

@@ -542,12 +542,14 @@ describe("setup and durable guidance", () => {
     const config = JSON.parse(read("vercel.json")) as {
       framework?: string | null;
       buildCommand?: string | null;
+      installCommand?: string | null;
       outputDirectory?: string | null;
     };
 
     expect(config.framework).toBe("nextjs");
     expect(config.buildCommand).toBe("next build");
-    expect(config.outputDirectory).toBeUndefined();
+    expect(config.installCommand).toBe("npm ci");
+    expect(config.outputDirectory).toBeNull();
   });
 
   it("documents leftover static-era Vercel dashboard overrides Mason must clear", () => {
