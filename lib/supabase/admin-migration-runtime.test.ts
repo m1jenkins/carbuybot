@@ -203,6 +203,45 @@ describe("admin workflow migration runtime", () => {
     expect(state.update_count).toBe(0);
   });
 
+  it("blocks direct admin table writes outside the transactional RPC", async () => {
+    const directUpdate = await asAuthenticatedUser(db, adminId, () =>
+      db.query<{ workflow_status: string }>(
+        `
+          update public.engagements
+          set workflow_status = 'in_review',
+              updated_at = pg_catalog.now()
+          where id = $1
+          returning workflow_status
+        `,
+        [engagementId],
+      ),
+    );
+    expect(directUpdate.rows).toEqual([]);
+
+    await expect(
+      asAuthenticatedUser(db, adminId, () =>
+        db.query(
+          `
+            insert into public.status_updates (
+              engagement_id,
+              author_id,
+              status,
+              title,
+              note,
+              customer_visible
+            )
+            values ($1, $2, 'in_review', 'Unpaired', 'Direct insert', true)
+          `,
+          [engagementId, adminId],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    const state = await readState(db);
+    expect(state.workflow_status).toBe("brief_submitted");
+    expect(state.update_count).toBe(0);
+  });
+
   it("locks and applies one allowed transition with exactly one visible admin note", async () => {
     await expect(
       asAuthenticatedUser(db, adminId, () =>

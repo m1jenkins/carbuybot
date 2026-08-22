@@ -49,6 +49,12 @@ begin
       using errcode = '22023';
   end if;
 
+  perform pg_catalog.set_config(
+    'app.admin_status_rpc_user',
+    (select auth.uid())::text,
+    true
+  );
+
   select engagements.workflow_status
   into v_current_status
   from public.engagements
@@ -123,3 +129,40 @@ revoke all on function public.update_engagement_status(uuid, text, text, text)
   from public, anon, service_role;
 grant execute on function public.update_engagement_status(uuid, text, text, text)
   to authenticated;
+
+drop policy if exists "Admins can update engagements"
+  on public.engagements;
+create policy "Admins can update engagements through workflow RPC"
+on public.engagements
+for update
+to authenticated
+using (
+  (select private.is_admin())
+  and pg_catalog.current_setting(
+    'app.admin_status_rpc_user',
+    true
+  ) = (select auth.uid())::text
+)
+with check (
+  (select private.is_admin())
+  and pg_catalog.current_setting(
+    'app.admin_status_rpc_user',
+    true
+  ) = (select auth.uid())::text
+);
+
+drop policy if exists "Admins can create status updates"
+  on public.status_updates;
+create policy "Admins can create status updates through workflow RPC"
+on public.status_updates
+for insert
+to authenticated
+with check (
+  (select private.is_admin())
+  and author_id = (select auth.uid())
+  and customer_visible
+  and pg_catalog.current_setting(
+    'app.admin_status_rpc_user',
+    true
+  ) = (select auth.uid())::text
+);

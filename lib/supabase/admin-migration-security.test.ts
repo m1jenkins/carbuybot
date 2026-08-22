@@ -35,7 +35,13 @@ describe("admin workflow migration security", () => {
     expect(workflowFunction).toBeDefined();
     expect(workflowFunction).not.toContain("security definer");
     expect(workflowFunction).toContain("if not (select private.is_admin())");
+    expect(workflowFunction).toContain(
+      "pg_catalog.set_config( 'app.admin_status_rpc_user', (select auth.uid())::text, true )",
+    );
     expect(workflowFunction).toContain("for update");
+    expect(normalizedSql).toContain(
+      "pg_catalog.current_setting( 'app.admin_status_rpc_user', true ) = (select auth.uid())::text",
+    );
   });
 
   it("validates transitions and writes only workflow state plus one visible note", () => {
