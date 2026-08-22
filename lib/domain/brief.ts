@@ -79,7 +79,9 @@ const shortTextSchema = z.string().trim().min(1).max(100);
 const textListSchema = z
   .array(shortTextSchema)
   .max(20)
-  .transform((values) => [...new Set(values)]);
+  .refine((values) => new Set(values).size === values.length, {
+    message: "List items must be unique",
+  });
 
 export const briefSchema = z
   .object({

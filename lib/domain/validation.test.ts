@@ -56,11 +56,14 @@ describe("briefSchema", () => {
     ).toBe(true);
   });
 
-  it.each([0, -1, 1.5])("rejects invalid budget cents: %s", (budgetCents) => {
-    expect(
-      briefSchema.safeParse({ ...validBrief, budgetCents }).success,
-    ).toBe(false);
-  });
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid budget cents: %s",
+    (budgetCents) => {
+      expect(
+        briefSchema.safeParse({ ...validBrief, budgetCents }).success,
+      ).toBe(false);
+    },
+  );
 
   it.each([0, 501])("rejects an out-of-range search radius: %s", (radius) => {
     expect(
@@ -77,6 +80,15 @@ describe("briefSchema", () => {
         ...validBrief,
         yearMin: 2025,
         yearMax: 2020,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects duplicate list items after normalization", () => {
+    expect(
+      briefSchema.safeParse({
+        ...validBrief,
+        colors: ["Savile Silver", " Savile Silver "],
       }).success,
     ).toBe(false);
   });

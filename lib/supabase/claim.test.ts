@@ -2,33 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const getUser = vi.fn();
-  const upsert = vi.fn();
-  const select = vi.fn();
-  const is = vi.fn(() => ({ select }));
-  const paymentStatusEq = vi.fn(() => ({ is }));
-  const customerEmailEq = vi.fn(() => ({ eq: paymentStatusEq }));
-  const update = vi.fn(() => ({ eq: customerEmailEq }));
-  const from = vi.fn((table: string) => {
-    if (table === "profiles") {
-      return { upsert };
-    }
-
-    return { update };
-  });
+  const rpc = vi.fn();
   const createServerClient = vi.fn(async () => ({ auth: { getUser } }));
-  const createAdminClient = vi.fn(() => ({ from }));
+  const createAdminClient = vi.fn(() => ({ rpc }));
 
   return {
     createAdminClient,
     createServerClient,
-    customerEmailEq,
-    from,
     getUser,
-    is,
-    paymentStatusEq,
-    select,
-    update,
-    upsert,
+    rpc,
   };
 });
 
@@ -55,14 +37,10 @@ describe("claimPaidEngagements", () => {
       data: { user: authenticatedUser },
       error: null,
     });
-    mocks.upsert.mockResolvedValue({ error: null });
-    mocks.select.mockResolvedValue({
-      data: [{ id: "engagement-1" }, { id: "engagement-2" }],
-      error: null,
-    });
+    mocks.rpc.mockResolvedValue({ data: 2, error: null });
   });
 
-  it("claims only paid, unowned rows matching the verified normalized email", async () => {
+  it("atomically claims paid, unowned rows for the verified normalized email", async () => {
     await expect(
       claimPaidEngagements(
         authenticatedUser.id,
@@ -70,26 +48,14 @@ describe("claimPaidEngagements", () => {
       ),
     ).resolves.toBe(2);
 
-    expect(mocks.upsert).toHaveBeenCalledWith(
+    expect(mocks.rpc).toHaveBeenCalledOnce();
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "claim_paid_engagements",
       {
-        id: authenticatedUser.id,
-        email: "buyer@example.com",
+        p_user_id: authenticatedUser.id,
+        p_verified_email: "buyer@example.com",
       },
-      { onConflict: "id" },
     );
-    expect(mocks.update).toHaveBeenCalledWith({
-      user_id: authenticatedUser.id,
-    });
-    expect(mocks.customerEmailEq).toHaveBeenCalledWith(
-      "customer_email",
-      "buyer@example.com",
-    );
-    expect(mocks.paymentStatusEq).toHaveBeenCalledWith(
-      "payment_status",
-      "paid",
-    );
-    expect(mocks.is).toHaveBeenCalledWith("user_id", null);
-    expect(mocks.select).toHaveBeenCalledWith("id");
   });
 
   it("does not create a privileged client before server authentication succeeds", async () => {
@@ -128,14 +94,14 @@ describe("claimPaidEngagements", () => {
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 
-  it("stops if the profile cannot be persisted", async () => {
-    mocks.upsert.mockResolvedValue({
-      error: new Error("profile write failed"),
+  it("surfaces a transactional claim failure", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: new Error("claim transaction failed"),
     });
 
     await expect(
       claimPaidEngagements(authenticatedUser.id, "buyer@example.com"),
-    ).rejects.toThrow("profile write failed");
-    expect(mocks.update).not.toHaveBeenCalled();
+    ).rejects.toThrow("claim transaction failed");
   });
 });

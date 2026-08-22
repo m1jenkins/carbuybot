@@ -28,29 +28,17 @@ export async function claimPaidEngagements(
   }
 
   const admin = createAdminClient();
-  const { error: profileError } = await admin.from("profiles").upsert(
+  const { data: claimedCount, error: claimError } = await admin.rpc(
+    "claim_paid_engagements",
     {
-      id: user.id,
-      email: authEmail,
+      p_user_id: user.id,
+      p_verified_email: authEmail,
     },
-    { onConflict: "id" },
   );
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  const { data: engagements, error: claimError } = await admin
-    .from("engagements")
-    .update({ user_id: user.id })
-    .eq("customer_email", authEmail)
-    .eq("payment_status", "paid")
-    .is("user_id", null)
-    .select("id");
 
   if (claimError) {
     throw new Error(claimError.message);
   }
 
-  return engagements.length;
+  return claimedCount;
 }

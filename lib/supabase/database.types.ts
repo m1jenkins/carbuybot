@@ -313,7 +313,15 @@ export type Database = {
       };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      claim_paid_engagements: {
+        Args: {
+          p_user_id: string;
+          p_verified_email: string;
+        };
+        Returns: number;
+      };
+    };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
   };

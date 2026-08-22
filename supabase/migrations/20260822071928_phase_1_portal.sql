@@ -1,6 +1,49 @@
 create schema if not exists private;
 revoke all on schema private from public;
 
+create or replace function private.is_valid_brief_text_array(candidate text[])
+returns boolean
+language plpgsql
+immutable
+security invoker
+set search_path = ''
+as $$
+begin
+  if candidate is null or pg_catalog.cardinality(candidate) > 20 then
+    return false;
+  end if;
+
+  if pg_catalog.cardinality(candidate) = 0 then
+    return true;
+  end if;
+
+  if not (pg_catalog.array_ndims(candidate) = 1) then
+    return false;
+  end if;
+
+  if not (pg_catalog.array_position(candidate, null) is null) then
+    return false;
+  end if;
+
+  return not exists (
+    select 1
+    from pg_catalog.unnest(candidate) as item(value)
+    where not (
+      item.value = pg_catalog.btrim(item.value)
+      and pg_catalog.char_length(item.value) between 1 and 100
+    )
+  )
+  and not exists (
+    select item.value
+    from pg_catalog.unnest(candidate) as item(value)
+    group by item.value
+    having pg_catalog.count(*) > 1
+  );
+end;
+$$;
+
+revoke all on function private.is_valid_brief_text_array(text[]) from public;
+
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
@@ -10,6 +53,7 @@ create table public.profiles (
   constraint profiles_email_normalized_check
     check (
       email = lower(btrim(email))
+      and pg_catalog.char_length(email) <= 320
       and email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
     ),
   constraint profiles_full_name_check
@@ -36,6 +80,7 @@ create table public.engagements (
   constraint engagements_customer_email_normalized_check
     check (
       customer_email = lower(btrim(customer_email))
+      and pg_catalog.char_length(customer_email) <= 320
       and customer_email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
     ),
   constraint engagements_checkout_session_id_check
@@ -128,12 +173,13 @@ create table public.vehicle_briefs (
   constraint vehicle_briefs_trim_check
     check (trim is null or char_length(btrim(trim)) between 1 and 100),
   constraint vehicle_briefs_colors_check
-    check (cardinality(colors) <= 20),
+    check (private.is_valid_brief_text_array(colors)),
   constraint vehicle_briefs_options_check
-    check (cardinality(options) <= 20),
+    check (private.is_valid_brief_text_array(options)),
   constraint vehicle_briefs_deal_breakers_check
-    check (cardinality(deal_breakers) <= 20),
-  constraint vehicle_briefs_budget_cents_check check (budget_cents > 0),
+    check (private.is_valid_brief_text_array(deal_breakers)),
+  constraint vehicle_briefs_budget_cents_check
+    check (budget_cents between 1 and 9007199254740991),
   constraint vehicle_briefs_city_check
     check (char_length(btrim(city)) between 1 and 100),
   constraint vehicle_briefs_state_check
@@ -255,8 +301,65 @@ as $$
 $$;
 
 revoke all on function private.is_admin() from public;
-grant usage on schema private to authenticated;
+grant usage on schema private to authenticated, service_role;
 grant execute on function private.is_admin() to authenticated;
+grant execute on function private.is_valid_brief_text_array(text[])
+  to authenticated, service_role;
+
+create or replace function public.claim_paid_engagements(
+  p_user_id uuid,
+  p_verified_email text
+)
+returns integer
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  claimed_count integer;
+begin
+  if p_user_id is null then
+    raise exception 'A user ID is required' using errcode = '22023';
+  end if;
+
+  if (
+    p_verified_email is null
+    or p_verified_email <> pg_catalog.lower(pg_catalog.btrim(p_verified_email))
+    or pg_catalog.char_length(p_verified_email) > 320
+    or p_verified_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+  ) then
+    raise exception 'A normalized verified email is required'
+      using errcode = '22023';
+  end if;
+
+  insert into public.profiles (id, email, updated_at)
+  values (
+    p_user_id,
+    p_verified_email,
+    pg_catalog.now()
+  )
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    updated_at = excluded.updated_at;
+
+  update public.engagements
+  set
+    user_id = p_user_id,
+    updated_at = pg_catalog.now()
+  where customer_email = p_verified_email
+    and payment_status = 'paid'
+    and user_id is null;
+
+  get diagnostics claimed_count = row_count;
+  return claimed_count;
+end;
+$$;
+
+revoke all on function public.claim_paid_engagements(uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.claim_paid_engagements(uuid, text)
+  to service_role;
 
 alter table public.profiles enable row level security;
 alter table public.engagements enable row level security;
@@ -280,7 +383,9 @@ grant all privileges on table public.stripe_events to service_role;
 grant all privileges on table public.admin_users to service_role;
 
 grant select on table public.profiles to authenticated;
-grant select, update on table public.engagements to authenticated;
+grant select on table public.engagements to authenticated;
+grant update (workflow_status, onboarding_completed_at, updated_at)
+  on table public.engagements to authenticated;
 grant select, insert, update on table public.vehicle_briefs to authenticated;
 grant select, insert on table public.status_updates to authenticated;
 grant select on table public.admin_users to authenticated;
