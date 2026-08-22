@@ -105,6 +105,13 @@ describe("Phase 1 static security invariants", () => {
 });
 
 describe("review fixture isolation and indexing", () => {
+  it("keeps the early JavaScript marker hydration-safe", () => {
+    const layout = read("app/layout.tsx");
+
+    expect(layout).toContain("document.documentElement.classList.add('js')");
+    expect(layout).toContain('<html lang="en" suppressHydrationWarning>');
+  });
+
   it("keeps preview modules away from privileged and payment write paths", () => {
     const previewSources = [
       ...filesUnder("app/preview"),
