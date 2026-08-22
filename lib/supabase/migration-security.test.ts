@@ -521,6 +521,16 @@ describe("brief revision consistency hardening", () => {
 });
 
 describe("final payment and revision hardening", () => {
+  it("backfills introductory slots without narrowing unbounded row numbers", () => {
+    expect(normalizedFinalReviewSql).toContain(
+      "pg_catalog.row_number() over (",
+    );
+    expect(normalizedFinalReviewSql).not.toContain(")::smallint as slot");
+    expect(normalizedFinalReviewSql).toContain(
+      "set intro_slot = eligible.slot::smallint",
+    );
+  });
+
   it("keeps every public payment RPC invoker-only and service-role-only", () => {
     for (const signature of [
       "reserve_checkout_engagement(text, text, text)",

@@ -334,6 +334,33 @@ describe("Stripe event fulfillment", () => {
     expect(memory.calls).toHaveLength(0);
   });
 
+  it("records a non-payment expired Session without releasing a reservation", async () => {
+    const memory = createMemoryPersistence();
+    const expire = vi.fn<PersistStripeExpiration>();
+    const event = {
+      id: "evt_test_expired_subscription",
+      livemode: false,
+      type: "checkout.session.expired",
+      data: {
+        object: {
+          ...paidSession,
+          id: "cs_test_expired_subscription",
+          mode: "subscription",
+          payment_status: "unpaid",
+        },
+      },
+    } as Stripe.Event;
+
+    await expect(
+      processEvent(event, memory.persist, expire),
+    ).resolves.toBe("processed");
+    expect(expire).not.toHaveBeenCalled();
+    expect(memory.calls[0]).toMatchObject({
+      eventId: "evt_test_expired_subscription",
+      fulfill: false,
+    });
+  });
+
   it("reconciles only fully refunded test charges", async () => {
     const memory = createMemoryPersistence();
     const expire = vi.fn<PersistStripeExpiration>();
