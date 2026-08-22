@@ -244,41 +244,61 @@ git commit -m "Add verified Stripe Checkout fulfillment"
 - Create: `app/(customer)/layout.tsx`
 - Create: `app/(customer)/onboarding/page.tsx`
 - Create: `app/(customer)/onboarding/actions.ts`
-- Create: `components/onboarding/onboarding-form.tsx`
-- Create: `components/onboarding/onboarding-form.test.tsx`
+- Create: `components/onboarding/intake-thread.tsx`
+- Create: `components/onboarding/intake-thread.test.tsx`
+- Create: `components/onboarding/intake-questions.ts`
 - Create: `middleware.ts`
 
 **Interfaces:**
 - Consumes: `claimPaidEngagements(userId, verifiedEmail)`
-- Produces: `saveBrief(input: BriefInput & { intent: "draft" | "submit" })`
+- Produces: `INTAKE_QUESTIONS: IntakeQuestion[]`
+- Produces: `saveAnswer({ engagementId, questionId, value }): Promise<SaveAnswerResult>`
+- Produces: `submitBrief({ engagementId }): Promise<SubmitBriefResult>`
 - Produces: authenticated customer route contract
 
 - [ ] **Step 1: Write failing onboarding tests**
 
 ```tsx
-render(<OnboardingForm engagementId="eng_1" initialBrief={null} />);
-expect(screen.getByLabelText(/make/i)).toBeRequired();
-await user.click(screen.getByRole("button", { name: /submit brief/i }));
-expect(await screen.findByText(/enter the make/i)).toBeVisible();
+render(<IntakeThread engagementId="eng_1" initialDraft={emptyBrief} />);
+expect(screen.getByText(/are you looking for a new car, a used car, or either/i)).toBeVisible();
+await user.click(screen.getByRole("button", { name: /new/i }));
+expect(screen.getByText("New", { selector: "[data-message=answer]" })).toBeVisible();
+expect(await screen.findByText(/which make are you after/i)).toBeVisible();
 ```
 
 - [ ] **Step 2: Run tests to verify failure**
 
-Run: `npm test -- components/onboarding/onboarding-form.test.tsx`
+Run: `npm test -- components/onboarding/intake-thread.test.tsx`
 
-Expected: FAIL because the onboarding form does not exist.
+Expected: FAIL because the conversational intake does not exist.
 
 - [ ] **Step 3: Implement magic-link callback**
 
 Exchange the auth code for a session, call `getUser()`, claim paid engagements using the verified email, and redirect to `/onboarding` for incomplete briefs or `/portal` otherwise. Reject missing or unverified identities.
 
-- [ ] **Step 4: Implement onboarding**
+- [ ] **Step 4: Implement conversational onboarding**
 
-Render five clear sections in one responsive form. Save drafts without changing workflow state. On submit, validate the complete payload, upsert `vehicle_briefs`, set `onboarding_completed_at`, transition to `brief_submitted`, and insert the first customer-visible status update in one server action.
+Build one continuous, narrow message thread instead of pages or a conventional form. `INTAKE_QUESTIONS` defines the ordered prompt, brief field, answer kind, choices, normalization, and validation for:
+
+```ts
+type IntakeQuestion = {
+  id: string;
+  field: keyof BriefInput;
+  prompt: string;
+  kind: "text" | "single-choice" | "multi-choice" | "currency" | "postal-code" | "number" | "confirmation";
+  choices?: readonly { label: string; value: string }[];
+};
+```
+
+Show one active incoming prompt at a time. Render committed customer answers as right-aligned outgoing messages and retain prior prompts above them. Use quick-reply pills for constrained answers and a bottom hairline composer for free text. Save and validate each answer before advancing; do not use fake typing delays, online dots, bot avatars, or simulated activity. A quiet hairline track shows progress, Back edits the previous answer, and focus moves to the new prompt with an `aria-live` announcement.
+
+Use the actual-preview references recorded in the design spec: Cleo for persistent conversational context, Speak for one-question focus and composer, Alan for readable accumulated turns, and Paired for question position plus thread continuity. Rebuild those interaction strengths using the existing warm paper, ink, Inter, hairline, and money-only teal rules.
+
+On final confirmation, validate the complete brief, upsert `vehicle_briefs`, set `onboarding_completed_at`, transition to `brief_submitted`, and insert the first customer-visible status update in one server action.
 
 - [ ] **Step 5: Run onboarding tests**
 
-Run: `npm test -- components/onboarding/onboarding-form.test.tsx`
+Run: `npm test -- components/onboarding/intake-thread.test.tsx`
 
 Expected: PASS.
 

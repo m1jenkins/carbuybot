@@ -133,15 +133,27 @@ It provides a magic-link form prefilled with the Checkout email when available.
 
 ### Onboarding
 
-The brief is a focused multi-section form:
+The brief feels like texting a buyer's agent, not completing a multi-page form. It uses one continuous message thread:
 
-1. vehicle: condition, make, model, year, trim
-2. must-haves: colors, options, deal-breakers
-3. budget and location: ceiling, ZIP, radius
-4. timing and deal structure: timeline, trade-in, financing
-5. review and consent
+- the agent asks one concise question at a time in a left-aligned incoming message
+- the customer's committed answer appears as a right-aligned outgoing message
+- constrained questions use quick-reply choices; names, models, ZIP codes, budgets, and notes use a composer
+- a quiet hairline progress track gives orientation without turning the flow into pages
+- previous answers remain readable and can be revisited without losing later draft data
+- the thread covers vehicle, must-haves, budget, location, timing, trade-in, financing, review, and consent
 
-Progress is saved as a draft. Final submission changes the engagement to `brief_submitted` and creates the first customer-visible status update.
+Each accepted answer is validated and saved to the draft before the next prompt appears. Final confirmation validates the complete brief, changes the engagement to `brief_submitted`, and creates the first customer-visible status update.
+
+The transcript is an interaction model, not chatbot theater: no fake typing delays, online dots, bot avatar, or invented status. Screen-reader users get a labelled question, explicit validation message, predictable focus movement, and an `aria-live` announcement when the next prompt appears.
+
+#### Intake references
+
+The design is rebuilt from actual Mobbin screen previews rather than copied chrome:
+
+- [Cleo conversational onboarding](https://mobbin.com/screens/2c28f1dd-5d34-4aa8-ae74-3ebe71f7cc4f): a real back-and-forth transcript establishes context before asking personal finance questions; CarBuyerBots keeps the conversational continuity but removes the loud mascot, gradients, and novelty copy.
+- [Speak one-question composer](https://mobbin.com/screens/c865f950-a4e6-49a9-853f-bcedba94fc15): one short assistant prompt, visible progress, and a focused composer make the immediate task obvious; CarBuyerBots adopts this hierarchy in warm paper and ink.
+- [Alan health companion thread](https://mobbin.com/screens/f3b30253-bcee-43d6-a2b4-18035a9e69d1): incoming and outgoing messages remain readable as context accumulates; CarBuyerBots uses this persistent-thread behavior without character art or decorative scenery.
+- [Paired guided question thread](https://mobbin.com/screens/ae1940ec-3889-4723-bddc-4a053a47e82f): the current question, position, prior response, and composer coexist; CarBuyerBots adopts that orientation while using the site's editorial typography and restrained materials.
 
 ### Customer portal
 
@@ -179,6 +191,8 @@ The app preserves the existing design language:
 - plain, concrete copy
 
 Portal status uses typography, labels, progress rules, and neutral tones rather than introducing a generic colorful SaaS dashboard.
+
+The intake thread uses a narrow reading column on warm paper, an ink hairline progress track, unboxed incoming prompts, and near-black outgoing bubbles. Quick replies are neutral outlined pills. The bottom composer is separated by a hairline rather than floating chatbot chrome. Teal appears only when the conversation discusses the customer's budget, fee, or negotiated money.
 
 ## Error Handling
 
