@@ -74,14 +74,19 @@ holding the photograph, and a `.plate__scrim` gradient that protects type. If a 
 missing or fails to load, JS adds `.plate--noimg` and the built ground shows — the page still reads
 as art-directed rather than broken.
 
-The hero is art-directed per breakpoint: a portrait master for phones and a landscape crop above
+The hero is art-directed per breakpoint: a portrait crop for phones and a landscape crop above
 720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
 actually used.
 
 Photography rules: documentary, no faces, and **no manufacturer logos** — see
-`media/CREDITS.md` for why and for the credit list. The hero is a bright daylight
-inventory lot (an aerial frame so badges do not read as endorsement). Later plates stay
-cool-dark with warm counterpoints.
+`media/CREDITS.md` for why and for the credit list. Later plates are cool-dark with warm
+counterpoints; the hero is daylight, an open aisle down a lot with the rows facing in.
+
+A bright hero costs more scrim than a dark one, not less, because white type has to hold over
+lit paintwork. The composition does most of that work: the aisle gives the headline and the
+worklog a calm ground, so the gradient only has to carry the eyebrow across the front row. The
+hero also lifts the worklog's timestamp and action off the muted-on-dark tokens, which are
+calibrated against a flat dark ground rather than a photograph in full daylight.
 
 ## Component rules
 

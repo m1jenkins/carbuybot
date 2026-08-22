@@ -172,8 +172,8 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero{min-height:min(100svh,940px);height:auto;display:flex;align-items:stretch}
 .hero .plate__scrim{
   background:
-    linear-gradient(180deg,rgba(8,9,10,.46) 0%,rgba(8,9,10,.08) 22%,rgba(8,9,10,.18) 46%,rgba(8,9,10,.46) 70%,rgba(8,9,10,.84) 100%),
-    linear-gradient(90deg,rgba(8,9,10,.40) 0%,rgba(8,9,10,.08) 48%,rgba(8,9,10,.38) 100%);
+    linear-gradient(180deg,rgba(8,9,10,.42) 0%,rgba(8,9,10,.07) 20%,rgba(8,9,10,.3) 34%,rgba(8,9,10,.5) 56%,rgba(8,9,10,.86) 100%),
+    linear-gradient(90deg,rgba(8,9,10,.54) 0%,rgba(8,9,10,.04) 46%,rgba(8,9,10,.22) 100%);
 }
 .hero .plate__body{
   width:100%;min-height:min(100svh,940px);
@@ -182,8 +182,9 @@ ul,ol{margin:0;padding:0;list-style:none}
   padding-block:clamp(96px,12vh,128px) clamp(36px,6vh,72px);
 }
 .hero-copy{min-width:0}
-/* the eyebrow sits on bright car roofs — keep it off the muted-on-dark token */
-.hero .label{color:rgba(242,241,238,.82);text-wrap:balance}
+/* the eyebrow lands on the lit fronts of the front row, so it takes the full
+   on-dark tone rather than the muted one the other plates use */
+.hero .label{color:var(--on-dark);text-wrap:balance}
 .hero .d1{max-width:min(14ch,100%);margin-top:18px;font-size:clamp(36px,5.2vw,76px)}
 .hero .d1 span{display:block}
 .hero .lede{max-width:min(36ch,100%);margin-top:22px;overflow-wrap:break-word}
@@ -208,8 +209,10 @@ ul,ol{margin:0;padding:0;list-style:none}
   align-items:baseline;column-gap:22px;
   padding:13px 0 13px var(--spine);border-bottom:1px solid var(--rule-dark-2);
 }
-.logrow__t{font-size:12.5px;line-height:1.5;color:var(--on-dark-mute);white-space:nowrap}
-.logrow__a{font-size:15.5px;line-height:1.45;color:var(--on-dark-soft)}
+/* the muted and soft tokens are calibrated against a flat dark ground; the log
+   sits on lit car roofs, so the timestamp and action take a lighter tone */
+.logrow__t{font-size:12.5px;line-height:1.5;color:rgba(242,241,238,.72);white-space:nowrap}
+.logrow__a{font-size:15.5px;line-height:1.45;color:rgba(242,241,238,.9)}
 .logrow__v{font-size:15.5px;line-height:1.45;color:var(--on-dark);white-space:nowrap}
 /* the entry where the deal closed carries the thread's teal spine */
 .logrow--close{border-bottom:0;position:relative}
@@ -933,14 +936,15 @@ html:not(.js) .rv{opacity:1;transform:none}
   .hero .d1 span{display:inline}
   .hero .lede{margin-top:16px;font-size:16px}
   .hero-act{margin-top:22px}
-  /* portrait: let the lot read in the upper half; type and the log sit in the lower wash */
+  /* portrait: the copy starts near the top here, so the wash carries the eyebrow
+     before opening up over the lot and closing again under the log */
   .hero .plate__scrim{background:linear-gradient(180deg,
-    rgba(8,9,10,.32) 0%,
-    rgba(8,9,10,.06) 14%,
-    rgba(8,9,10,.10) 32%,
-    rgba(8,9,10,.42) 52%,
-    rgba(8,9,10,.78) 76%,
-    rgba(8,9,10,.88) 100%)}
+    rgba(8,9,10,.44) 0%,
+    rgba(8,9,10,.34) 16%,
+    rgba(8,9,10,.26) 34%,
+    rgba(8,9,10,.5) 54%,
+    rgba(8,9,10,.8) 76%,
+    rgba(8,9,10,.9) 100%)}
   /* portrait: the timestamp takes its own line, since an entry would otherwise
      wrap twice. The log folds to the three entries that carry the whole arc —
      six dealers at once, a counter answered at night, and Mike approving the
