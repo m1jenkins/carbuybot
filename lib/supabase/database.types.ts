@@ -391,6 +391,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      update_engagement_status: {
+        Args: {
+          p_engagement_id: string;
+          p_next_status: WorkflowStatus;
+          p_note: string;
+          p_title: string;
+        };
+        Returns: boolean;
+      };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

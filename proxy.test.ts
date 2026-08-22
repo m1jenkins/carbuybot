@@ -90,6 +90,25 @@ describe("Supabase auth proxy", () => {
     );
   });
 
+  it("refreshes and redirects an unauthenticated admin route", async () => {
+    mocks.getClaims.mockResolvedValueOnce({
+      data: { claims: null },
+      error: new Error("invalid token"),
+    });
+
+    const response = await proxy(
+      new NextRequest(
+        "https://carbuyerbots.com/admin/engagements/a6204b70-c308-40e8-b87f-30843d48cb79",
+      ),
+    );
+    const location = new URL(response.headers.get("location")!);
+
+    expect(location.pathname).toBe("/sign-in");
+    expect(location.searchParams.get("next")).toBe(
+      "/admin/engagements/a6204b70-c308-40e8-b87f-30843d48cb79",
+    );
+  });
+
   it("allows a reviewable setup state when public configuration is missing", async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

@@ -20,7 +20,7 @@ describe("landing design constraints", () => {
 describe("customer portal design constraints", () => {
   it("uses editorial hairlines without gradients, shadows, or non-money teal", () => {
     const portalStyles = styles.match(
-      /\/\* ── customer portal[\s\S]*?(?=\/\* ── conversational intake)/,
+      /\/\* ── customer portal[\s\S]*?(?=\/\* ── admin review console|\/\* ── conversational intake)/,
     )?.[0];
 
     expect(portalStyles).toBeDefined();

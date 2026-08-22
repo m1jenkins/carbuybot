@@ -4,10 +4,10 @@ import type { NextRequest } from "next/server";
 
 import type { Database } from "@/lib/supabase/database.types";
 
-const CUSTOMER_PATHS = ["/onboarding", "/portal"] as const;
+const PROTECTED_PATHS = ["/admin", "/onboarding", "/portal"] as const;
 
-function isCustomerPath(pathname: string): boolean {
-  return CUSTOMER_PATHS.some(
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 }
@@ -62,7 +62,7 @@ export async function proxy(request: NextRequest) {
 
   const { data, error } = await supabase.auth.getClaims();
   if (
-    isCustomerPath(request.nextUrl.pathname) &&
+    isProtectedPath(request.nextUrl.pathname) &&
     (error || !data?.claims?.sub)
   ) {
     const signInUrl = request.nextUrl.clone();
@@ -79,5 +79,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/onboarding/:path*", "/portal/:path*"],
+  matcher: ["/admin/:path*", "/onboarding/:path*", "/portal/:path*"],
 };
