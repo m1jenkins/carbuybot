@@ -71,6 +71,10 @@ begin
     raise exception 'An engagement is required' using errcode = '22023';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_engagement_id::text, 0)
+  );
+
   if p_question_id is null or p_question_id not in (
     'condition',
     'make',
@@ -195,6 +199,10 @@ begin
     raise exception 'An engagement and authenticated user are required'
       using errcode = '22023';
   end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_engagement_id::text, 0)
+  );
 
   select engagements.*
   into target_engagement

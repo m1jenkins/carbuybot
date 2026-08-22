@@ -348,4 +348,18 @@ describe("conversational intake review hardening", () => {
       "insert into public.vehicle_briefs",
     );
   });
+
+  it("serializes answer saves and finalization for the same engagement", () => {
+    const engagementLock =
+      "pg_catalog.pg_advisory_xact_lock( pg_catalog.hashtextextended(p_engagement_id::text, 0) )";
+    const saveFunction = normalizedIntakeHardeningSql.match(
+      /create or replace function public\.save_brief_answer\([\s\S]*?\$\$;/,
+    )?.[0];
+    const finalizationFunction = normalizedIntakeHardeningSql.match(
+      /create or replace function public\.finalize_vehicle_brief\([\s\S]*?\$\$;/,
+    )?.[0];
+
+    expect(saveFunction).toContain(engagementLock);
+    expect(finalizationFunction).toContain(engagementLock);
+  });
 });
