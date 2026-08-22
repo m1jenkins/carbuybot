@@ -60,6 +60,14 @@ const completedEngagement = {
   stripe_checkout_session_id: "cs_test_completed_reference",
   workflow_status: "completed",
 };
+const refundedEngagement = {
+  ...engagement,
+  created_at: "2026-08-23T12:00:00.000Z",
+  id: "60d1675a-ca26-4a59-9d15-95cd4f781f8f",
+  payment_status: "refunded",
+  stripe_checkout_session_id: "cs_test_refunded_reference",
+  workflow_status: "awaiting_brief",
+};
 
 const brief = {
   budget_cents: 6_000_000,
@@ -101,7 +109,11 @@ describe("PortalPage", () => {
     });
     mocks.engagementQuery.then.mockImplementation((onFulfilled, onRejected) =>
       Promise.resolve({
-        data: [completedEngagement, engagement],
+        data: [
+          refundedEngagement,
+          completedEngagement,
+          engagement,
+        ],
         error: null,
       }).then(onFulfilled, onRejected),
     );
@@ -174,6 +186,7 @@ describe("PortalPage", () => {
       "status_updates",
     ]);
     expect(mocks.engagementQuery.eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(mocks.engagementQuery.eq).toHaveBeenCalledTimes(1);
     expect(mocks.engagementQuery.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     });
@@ -241,7 +254,7 @@ describe("PortalPage", () => {
     expect(mocks.createServerClient).not.toHaveBeenCalled();
   });
 
-  it("defaults to an active engagement before a newer completed one", async () => {
+  it("defaults to a paid actionable engagement before newer refunded and completed rows", async () => {
     render(
       await PortalPage({
         searchParams: Promise.resolve({}),
@@ -254,6 +267,24 @@ describe("PortalPage", () => {
     );
     expect(
       screen.getByRole("link", { name: /brief submitted/i }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("preserves an explicitly selected refunded engagement", async () => {
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: refundedEngagement.id,
+        }),
+      }),
+    );
+
+    expect(mocks.briefQuery.eq).toHaveBeenCalledWith(
+      "engagement_id",
+      refundedEngagement.id,
+    );
+    expect(
+      screen.getByRole("link", { name: /payment refunded/i }),
     ).toHaveAttribute("aria-current", "page");
   });
 

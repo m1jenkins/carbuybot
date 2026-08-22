@@ -74,6 +74,33 @@ const WORKFLOW_COPY: Record<
   },
 };
 
+function engagementCopy(
+  engagement: Pick<PortalEngagement, "payment_status" | "workflow_status">,
+): { label: string; nextStep: string } {
+  if (engagement.payment_status === "refunded") {
+    return {
+      label: "Payment refunded",
+      nextStep:
+        "The service fee was refunded. No further work is scheduled for this engagement.",
+    };
+  }
+  if (engagement.payment_status === "failed") {
+    return {
+      label: "Payment not completed",
+      nextStep:
+        "Payment was not completed, so no vehicle search has started for this engagement.",
+    };
+  }
+  if (engagement.payment_status === "pending") {
+    return {
+      label: "Payment pending",
+      nextStep:
+        "Payment has not been confirmed. No vehicle search will begin unless payment is completed.",
+    };
+  }
+  return WORKFLOW_COPY[engagement.workflow_status];
+}
+
 function formatPaymentAmount(
   amountCents: number,
   currency: string,
@@ -116,7 +143,7 @@ export function PortalShell({
   signOutAction,
   updates,
 }: PortalShellProps) {
-  const workflow = WORKFLOW_COPY[engagement.workflow_status];
+  const workflow = engagementCopy(engagement);
   const paymentReference =
     engagement.stripe_checkout_session_id ??
     engagement.stripe_payment_intent_id;
@@ -156,7 +183,7 @@ export function PortalShell({
                   href={`/portal?engagement=${item.id}`}
                   aria-current={item.id === engagement.id ? "page" : undefined}
                 >
-                  <span>{WORKFLOW_COPY[item.workflow_status].label}</span>
+                  <span>{engagementCopy(item).label}</span>
                   <time dateTime={item.created_at}>
                     {formatEngagementDate(item.created_at)}
                   </time>

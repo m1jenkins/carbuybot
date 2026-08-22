@@ -3,7 +3,7 @@ import { z } from "zod";
 
 type SelectableEngagement = Pick<
   Tables<"engagements">,
-  "created_at" | "id" | "workflow_status"
+  "created_at" | "id" | "payment_status" | "workflow_status"
 >;
 
 const engagementIdSchema = z.uuid();
@@ -20,10 +20,23 @@ function isTerminal(status: SelectableEngagement["workflow_status"]): boolean {
   return status === "completed" || status === "cancelled";
 }
 
+function isPaidActionable(engagement: SelectableEngagement): boolean {
+  return (
+    engagement.payment_status === "paid" &&
+    !isTerminal(engagement.workflow_status)
+  );
+}
+
 export function orderCustomerEngagements<T extends SelectableEngagement>(
   engagements: readonly T[],
 ): T[] {
   return [...engagements].sort((first, second) => {
+    const actionabilityDifference =
+      Number(!isPaidActionable(first)) - Number(!isPaidActionable(second));
+    if (actionabilityDifference !== 0) {
+      return actionabilityDifference;
+    }
+
     const terminalDifference =
       Number(isTerminal(first.workflow_status)) -
       Number(isTerminal(second.workflow_status));

@@ -76,12 +76,20 @@ const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const submittedEngagement = {
   created_at: "2026-08-21T08:00:00.000Z",
   id: engagementId,
+  payment_status: "paid",
   workflow_status: "brief_submitted",
 };
 const reviewEngagement = {
   created_at: "2026-08-22T08:00:00.000Z",
   id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  payment_status: "paid",
   workflow_status: "in_review",
+};
+const refundedEngagement = {
+  created_at: "2026-08-23T08:00:00.000Z",
+  id: "60d1675a-ca26-4a59-9d15-95cd4f781f8f",
+  payment_status: "refunded",
+  workflow_status: "awaiting_brief",
 };
 
 describe("OnboardingPage brief revision", () => {
@@ -100,7 +108,11 @@ describe("OnboardingPage brief revision", () => {
     });
     mocks.engagementQuery.then.mockImplementation((onFulfilled, onRejected) =>
       Promise.resolve({
-        data: [submittedEngagement, reviewEngagement],
+        data: [
+          refundedEngagement,
+          submittedEngagement,
+          reviewEngagement,
+        ],
         error: null,
       }).then(onFulfilled, onRejected),
     );
@@ -154,6 +166,11 @@ describe("OnboardingPage brief revision", () => {
     );
 
     expect(mocks.engagementQuery.in).not.toHaveBeenCalled();
+    expect(mocks.engagementQuery.select).toHaveBeenCalledWith(
+      "created_at, id, payment_status, workflow_status",
+    );
+    expect(mocks.engagementQuery.eq).toHaveBeenCalledTimes(1);
+    expect(mocks.engagementQuery.eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(mocks.engagementQuery.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     });
@@ -245,6 +262,25 @@ describe("OnboardingPage brief revision", () => {
 
     expect(mocks.redirect).toHaveBeenCalledWith(
       `/portal?engagement=${reviewEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
+  });
+
+  it("returns an explicitly selected refunded editable workflow to its own portal", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: refundedEngagement.id,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${refundedEngagement.id}`,
     );
     expect(mocks.draftQuery.select).not.toHaveBeenCalled();
   });

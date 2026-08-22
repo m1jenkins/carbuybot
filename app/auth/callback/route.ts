@@ -91,9 +91,8 @@ export async function GET(request: Request) {
 
     const { data: engagements, error: engagementError } = await supabase
       .from("engagements")
-      .select("created_at, id, workflow_status")
+      .select("created_at, id, payment_status, workflow_status")
       .eq("user_id", user.id)
-      .eq("payment_status", "paid")
       .order("created_at", { ascending: false });
 
     if (engagementError) {
@@ -112,17 +111,11 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/portal", requestUrl.origin));
     }
 
-    const requestedOwnedEngagement =
-      requestedEngagementId === engagement.id;
     const editable =
-      engagement.workflow_status === "awaiting_brief" ||
-      engagement.workflow_status === "brief_submitted";
-    const route =
-      requestedOwnedEngagement && requestedDestination.pathname === "/portal"
-        ? "/portal"
-        : editable
-          ? "/onboarding"
-          : "/portal";
+      engagement.payment_status === "paid" &&
+      (engagement.workflow_status === "awaiting_brief" ||
+        engagement.workflow_status === "brief_submitted");
+    const route = editable ? "/onboarding" : "/portal";
     const destination = new URL(route, requestUrl.origin);
     destination.searchParams.set("engagement", engagement.id);
     return NextResponse.redirect(destination);

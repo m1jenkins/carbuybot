@@ -195,6 +195,37 @@ describe("PortalShell", () => {
     ).toBeVisible();
   });
 
+  it("states that a refunded engagement has no scheduled next action", () => {
+    const refundedEngagement = {
+      ...engagement,
+      payment_status: "refunded" as const,
+      workflow_status: "awaiting_brief" as const,
+    };
+
+    render(
+      <PortalShell
+        brief={null}
+        engagement={refundedEngagement}
+        engagements={[refundedEngagement, completedEngagement]}
+        updates={[]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /payment refunded/i,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/no further work is scheduled for this engagement/i),
+    ).toBeVisible();
+    expect(screen.queryByText(/complete your vehicle brief/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /complete brief/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("lists every owned engagement and marks the selected one", () => {
     render(
       <PortalShell

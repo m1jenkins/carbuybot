@@ -9,22 +9,32 @@ import {
 const activeOlder = {
   created_at: "2026-08-20T08:00:00.000Z",
   id: "00000000-0000-4000-8000-000000000001",
+  payment_status: "paid" as const,
   workflow_status: "searching" as const,
 };
 const activeNewer = {
   created_at: "2026-08-21T08:00:00.000Z",
   id: "00000000-0000-4000-8000-000000000002",
+  payment_status: "paid" as const,
   workflow_status: "brief_submitted" as const,
 };
 const completedNewest = {
   created_at: "2026-08-22T08:00:00.000Z",
   id: "00000000-0000-4000-8000-000000000003",
+  payment_status: "paid" as const,
   workflow_status: "completed" as const,
 };
 const cancelled = {
   created_at: "2026-08-19T08:00:00.000Z",
   id: "00000000-0000-4000-8000-000000000004",
+  payment_status: "paid" as const,
   workflow_status: "cancelled" as const,
+};
+const refundedNewest = {
+  created_at: "2026-08-23T08:00:00.000Z",
+  id: "00000000-0000-4000-8000-000000000005",
+  payment_status: "refunded" as const,
+  workflow_status: "awaiting_brief" as const,
 };
 
 describe("customer engagement selection", () => {
@@ -51,6 +61,31 @@ describe("customer engagement selection", () => {
         completedNewest.id,
       ),
     ).toEqual(completedNewest);
+  });
+
+  it("prioritizes paid actionable work over a newer refunded active row", () => {
+    expect(
+      orderCustomerEngagements([
+        refundedNewest,
+        completedNewest,
+        activeOlder,
+        activeNewer,
+      ]).map(({ id }) => id),
+    ).toEqual([
+      activeNewer.id,
+      activeOlder.id,
+      refundedNewest.id,
+      completedNewest.id,
+    ]);
+  });
+
+  it("preserves an explicitly requested refunded engagement", () => {
+    expect(
+      selectCustomerEngagement(
+        [activeNewer, refundedNewest],
+        refundedNewest.id,
+      ),
+    ).toEqual(refundedNewest);
   });
 
   it("falls back deterministically for an invalid or unowned request", () => {

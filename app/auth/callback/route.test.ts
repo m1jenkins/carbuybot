@@ -35,12 +35,20 @@ import { GET } from "./route";
 const awaitingEngagement = {
   created_at: "2026-08-20T08:00:00.000Z",
   id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+  payment_status: "paid",
   workflow_status: "awaiting_brief",
 };
 const completedEngagement = {
   created_at: "2026-08-22T08:00:00.000Z",
   id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  payment_status: "paid",
   workflow_status: "completed",
+};
+const refundedEngagement = {
+  created_at: "2026-08-23T08:00:00.000Z",
+  id: "60d1675a-ca26-4a59-9d15-95cd4f781f8f",
+  payment_status: "refunded",
+  workflow_status: "awaiting_brief",
 };
 
 describe("magic-link callback", () => {
@@ -74,7 +82,11 @@ describe("magic-link callback", () => {
     });
     mocks.query.then.mockImplementation((onFulfilled, onRejected) =>
       Promise.resolve({
-        data: [completedEngagement, awaitingEngagement],
+        data: [
+          refundedEngagement,
+          completedEngagement,
+          awaitingEngagement,
+        ],
         error: null,
       }).then(onFulfilled, onRejected),
     );
@@ -102,6 +114,11 @@ describe("magic-link callback", () => {
       "buyer@example.com",
     );
     expect(mocks.from).toHaveBeenCalledWith("engagements");
+    expect(mocks.query.select).toHaveBeenCalledWith(
+      "created_at, id, payment_status, workflow_status",
+    );
+    expect(mocks.query.eq).toHaveBeenCalledTimes(1);
+    expect(mocks.query.eq).toHaveBeenCalledWith("user_id", "user_1");
     expect(response.headers.get("location")).toBe(
       `https://carbuyerbots.com/onboarding?engagement=${awaitingEngagement.id}`,
     );
@@ -138,6 +155,34 @@ describe("magic-link callback", () => {
 
     expect(response.headers.get("location")).toBe(
       `https://carbuyerbots.com/portal?engagement=${completedEngagement.id}`,
+    );
+  });
+
+  it("routes an explicitly selected refunded workflow to its own portal", async () => {
+    const response = await GET(
+      new Request(
+        `https://carbuyerbots.com/auth/callback?code=auth-code&next=${encodeURIComponent(
+          `/onboarding?engagement=${refundedEngagement.id}`,
+        )}`,
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      `https://carbuyerbots.com/portal?engagement=${refundedEngagement.id}`,
+    );
+  });
+
+  it("routes an explicitly selected paid editable row to onboarding", async () => {
+    const response = await GET(
+      new Request(
+        `https://carbuyerbots.com/auth/callback?code=auth-code&next=${encodeURIComponent(
+          `/portal?engagement=${awaitingEngagement.id}`,
+        )}`,
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      `https://carbuyerbots.com/onboarding?engagement=${awaitingEngagement.id}`,
     );
   });
 

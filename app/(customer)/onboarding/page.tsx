@@ -82,9 +82,8 @@ export default async function OnboardingPage({
 
   const { data: visibleEngagements, error: engagementError } = await supabase
     .from("engagements")
-    .select("created_at, id, workflow_status")
+    .select("created_at, id, payment_status, workflow_status")
     .eq("user_id", user.id)
-    .eq("payment_status", "paid")
     .order("created_at", { ascending: false });
 
   if (engagementError) {
@@ -106,8 +105,9 @@ export default async function OnboardingPage({
     redirect("/portal");
   }
   const isEditable =
-    engagement.workflow_status === "awaiting_brief" ||
-    engagement.workflow_status === "brief_submitted";
+    engagement.payment_status === "paid" &&
+    (engagement.workflow_status === "awaiting_brief" ||
+      engagement.workflow_status === "brief_submitted");
   if (!isEditable) {
     redirect(`/portal?engagement=${engagement.id}`);
   }
