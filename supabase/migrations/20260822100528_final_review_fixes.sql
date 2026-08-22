@@ -697,10 +697,35 @@ as $$
 declare
   finalized boolean;
 begin
-  finalized := private.finalize_vehicle_brief(
-    p_engagement_id,
-    p_user_id
+  if p_engagement_id is null or p_user_id is null then
+    raise exception 'An engagement and authenticated user are required'
+      using errcode = '22023';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_engagement_id::text, 0)
   );
+
+  if exists (
+    select 1
+    from public.engagements
+    join public.brief_drafts
+      on brief_drafts.engagement_id = engagements.id
+    where engagements.id = p_engagement_id
+      and engagements.user_id = p_user_id
+      and engagements.payment_status = 'paid'
+      and engagements.workflow_status = 'brief_submitted'
+      and brief_drafts.baseline_answers = brief_drafts.answers
+      and brief_drafts.current_question_id = 'condition'
+      and brief_drafts.progress_index = -1
+  ) then
+    finalized := true;
+  else
+    finalized := private.finalize_vehicle_brief(
+      p_engagement_id,
+      p_user_id
+    );
+  end if;
 
   update public.brief_drafts
   set

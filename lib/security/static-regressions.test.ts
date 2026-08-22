@@ -192,8 +192,6 @@ describe("Phase 1 static security invariants", () => {
       [
         "admin_users:Admins can view admin assignments",
         "admin_users:Users can view their admin assignment",
-        "brief_drafts:Customers can start an editable paid vehicle brief draft",
-        "brief_drafts:Customers can update their editable paid vehicle brief draft",
         "brief_drafts:Customers can view their vehicle brief draft",
         "engagements:Admins can view engagements",
         "engagements:Customers can view their engagements",
@@ -265,43 +263,6 @@ describe("Phase 1 static security invariants", () => {
                 where engagements.id = brief_drafts.engagement_id
                   and engagements.user_id = (select auth.uid())
                   and engagements.payment_status = 'paid'
-              )
-            );`,
-        ],
-        [
-          "brief_drafts:Customers can start an editable paid vehicle brief draft",
-          `create policy "Customers can start an editable paid vehicle brief draft"
-            on public.brief_drafts for insert to authenticated
-            with check (
-              exists (
-                select 1 from public.engagements
-                where engagements.id = brief_drafts.engagement_id
-                  and engagements.user_id = (select auth.uid())
-                  and engagements.payment_status = 'paid'
-                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
-              )
-            );`,
-        ],
-        [
-          "brief_drafts:Customers can update their editable paid vehicle brief draft",
-          `create policy "Customers can update their editable paid vehicle brief draft"
-            on public.brief_drafts for update to authenticated
-            using (
-              exists (
-                select 1 from public.engagements
-                where engagements.id = brief_drafts.engagement_id
-                  and engagements.user_id = (select auth.uid())
-                  and engagements.payment_status = 'paid'
-                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
-              )
-            )
-            with check (
-              exists (
-                select 1 from public.engagements
-                where engagements.id = brief_drafts.engagement_id
-                  and engagements.user_id = (select auth.uid())
-                  and engagements.payment_status = 'paid'
-                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
               )
             );`,
         ],
