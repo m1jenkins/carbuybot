@@ -172,8 +172,8 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero{min-height:min(100svh,940px);height:auto;display:flex;align-items:stretch}
 .hero .plate__scrim{
   background:
-    linear-gradient(180deg,rgba(8,9,10,.46) 0%,rgba(8,9,10,.08) 24%,rgba(8,9,10,.16) 50%,rgba(8,9,10,.76) 100%),
-    linear-gradient(90deg,rgba(8,9,10,.40) 0%,rgba(8,9,10,.08) 48%,rgba(8,9,10,.30) 100%);
+    linear-gradient(180deg,rgba(8,9,10,.46) 0%,rgba(8,9,10,.08) 22%,rgba(8,9,10,.18) 46%,rgba(8,9,10,.46) 70%,rgba(8,9,10,.84) 100%),
+    linear-gradient(90deg,rgba(8,9,10,.40) 0%,rgba(8,9,10,.08) 48%,rgba(8,9,10,.38) 100%);
 }
 .hero .plate__body{
   width:100%;min-height:min(100svh,940px);
