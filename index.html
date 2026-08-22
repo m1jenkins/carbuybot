@@ -419,6 +419,107 @@ html:not(.js) .hero-demo .msg--close{box-shadow:inset 2px 0 0 var(--money-dark)}
 }
 .chip--quiet{color:var(--meta);border-color:var(--rule)}
 
+/* ── deal sheet: the workbook the customer keeps ───────────────────────
+   Spreadsheet chrome rendered in the page's own materials — hairline
+   gridlines, no radius, no shadow, tabular figures, teal on money only.
+   Reference direction: Equals and Rows (formula bar, lettered columns,
+   a name tag on the live cell), Clay (a table filling in as work lands). */
+.sheet{margin-top:clamp(40px,5vw,64px)}
+.sheet__box{border:1px solid var(--rule);background:var(--paper-2)}
+.sheet__bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px 20px;flex-wrap:wrap;
+  padding:13px 16px;border-bottom:1px solid var(--rule);
+}
+.sheet__file{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500;letter-spacing:-.006em}
+.sheet__file svg{flex:none;opacity:.5}
+.sheet__live{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--meta)}
+.sheet__live i{
+  flex:none;width:6px;height:6px;border-radius:999px;background:var(--meta);
+  animation:live 2.8s var(--ease) infinite;
+}
+@keyframes live{0%,100%{opacity:.25}50%{opacity:.95}}
+.sheet__fx{display:flex;align-items:stretch;border-bottom:1px solid var(--rule)}
+.sheet__ref{
+  flex:none;width:60px;display:flex;align-items:center;padding:9px 12px;
+  border-right:1px solid var(--rule);font-size:11.5px;color:var(--meta);
+}
+.sheet__fx code{
+  min-width:0;padding:9px 14px;font-family:inherit;font-size:12.5px;color:var(--graphite);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sheet__scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+
+table.grid{width:100%;min-width:960px;border-collapse:collapse;table-layout:fixed;text-align:left}
+.grid th,.grid td{
+  padding:12px;font-size:13.5px;line-height:1.35;vertical-align:top;
+  border-right:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);
+}
+/* the column-letter gutter row */
+.grid .cols td{
+  padding:6px 12px;text-align:center;background:var(--rule-2);color:var(--meta);
+  font-size:10px;font-weight:600;letter-spacing:.14em;border-bottom:1px solid var(--rule);
+}
+.grid .names th{
+  padding:13px 12px;font-size:11px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--meta);border-bottom:1px solid var(--ink);white-space:nowrap;
+}
+.grid .rownum{
+  width:34px;padding:0;text-align:center;vertical-align:middle;
+  background:var(--rule-2);color:var(--meta);font-size:10.5px;font-variant-numeric:tabular-nums;
+}
+/* dealer name and row number hold their place while the numbers scroll */
+.grid .rownum,.grid .c-dealer{position:sticky;z-index:3}
+.grid .rownum{left:0}
+.grid .c-dealer{left:34px}
+.grid tbody th{font-weight:500;background:var(--paper-2)}
+.grid tbody td{color:var(--graphite);font-variant-numeric:tabular-nums}
+.grid .c-note{font-size:13px;color:var(--meta);font-variant-numeric:normal}
+.grid .c-otd{color:var(--ink);font-weight:500}
+.grid .na{color:#B8B3AB}
+.grid tr.is-win th,.grid tr.is-win td{background:var(--paper)}
+.grid tr.is-win .c-otd{color:var(--money)}
+.grid tfoot th,.grid tfoot td{
+  border-top:1px solid var(--ink);border-bottom:0;background:var(--paper-2);
+  font-size:13px;color:var(--meta);
+}
+.grid tfoot th{color:var(--ink);font-weight:500}
+.grid tfoot .c-otd{font-size:16.5px;font-weight:500;letter-spacing:-.02em;color:var(--money)}
+/* the cell the agent is working in, tagged the way a collaborator's cursor is */
+.grid .cell--live{position:relative;box-shadow:inset 0 0 0 2px var(--ink)}
+.grid .cell--live::after{
+  content:"Your agent";position:absolute;left:-2px;top:-1px;transform:translateY(-100%);
+  padding:3px 7px;background:var(--ink);color:var(--paper);
+  font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+}
+.sheet__tabs{display:flex;overflow-x:auto;background:var(--rule-2);border-top:1px solid var(--rule)}
+.sheet__tabs li{
+  flex:none;padding:11px 16px;font-size:12px;color:var(--meta);
+  border-right:1px solid var(--rule);white-space:nowrap;
+}
+.sheet__tabs li.is-on{background:var(--paper-2);color:var(--ink);font-weight:500;box-shadow:inset 0 2px 0 var(--ink)}
+.sheet figcaption{margin-top:18px;font-size:13px;line-height:1.6;color:var(--meta);max-width:84ch}
+
+/* rows land one after another, the way replies do */
+.sheet .grid tbody tr,.sheet .grid tfoot tr{opacity:0}
+.sheet.in .grid tbody tr,.sheet.in .grid tfoot tr{
+  animation:rowIn .5s var(--ease) both;animation-delay:calc(var(--i,0) * 105ms);
+}
+.sheet .grid .cell--live::after{opacity:0}
+.sheet.in .grid .cell--live::after{animation:rowIn .5s var(--ease) both;animation-delay:1.05s}
+.sheet.in .grid tfoot .c-otd{animation:moneyIn .8s var(--ease) both;animation-delay:.86s}
+@keyframes rowIn{from{opacity:0}to{opacity:1}}
+
+/* what the document is for */
+.trio{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  margin-top:clamp(38px,4.5vw,60px);border-top:1px solid var(--ink);
+}
+.trio li{padding:22px 26px 0;border-left:1px solid var(--rule)}
+.trio li:first-child{border-left:0;padding-left:0}
+.trio b{display:block;font-size:15px;font-weight:500;letter-spacing:-.008em}
+.trio span{display:block;margin-top:7px;font-size:13.5px;line-height:1.5;color:var(--graphite)}
+
 /* ── comparison (three-way) ────────────────────────────────────────── */
 .cmp-scroll{margin-top:clamp(40px,5vw,64px);overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.cmp{width:100%;min-width:760px;border-collapse:collapse;text-align:left}
@@ -531,6 +632,9 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .stmt__l,.ev__rail{position:static}
   .offers{grid-template-columns:1fr}
   .offer--best{box-shadow:inset 3px 0 0 var(--ink)}
+  .trio{grid-template-columns:1fr}
+  .trio li{padding:20px 0;border-left:0;border-top:1px solid var(--rule)}
+  .trio li:first-child{border-top:0;padding-top:22px}
   .step{grid-template-columns:1fr;gap:26px}
   .step--flip .step__fig{order:0}
   .step__fig{aspect-ratio:16/10}
@@ -572,6 +676,9 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
     mask-image:linear-gradient(180deg,transparent 0,#000 36px);
   }
   .form .btn{width:100%}
+  .grid th,.grid td{padding:11px 10px;font-size:13px}
+  .grid .c-note{font-size:12.5px}
+  .sheet__ref{width:52px}
   .cmp-scroll{overflow:visible}
   table.cmp{min-width:0}
   table.cmp,table.cmp tbody,table.cmp tr,table.cmp tbody th,table.cmp td{display:block;width:auto}
@@ -605,6 +712,9 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .hero-demo .msg--close{box-shadow:inset 2px 0 0 var(--money-dark)}
   .hero-demo .msg--close .money{filter:none;animation:none}
   .hero-demo__thread{max-height:none;-webkit-mask-image:none;mask-image:none}
+  .sheet .grid tbody tr,.sheet .grid tfoot tr,.sheet .grid tfoot .c-otd,
+  .sheet .grid .cell--live::after{opacity:1;animation:none!important}
+  .sheet__live i{animation:none;opacity:.6}
 }
 </style>
 <script>document.documentElement.classList.add('js');</script>
@@ -930,6 +1040,153 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
       </div>
       <p class="cap" style="margin-top:20px">Illustrative layout. The figures show the shape of the
         comparison, not a specific customer&rsquo;s deal.</p>
+    </div>
+  </section>
+
+  <!-- Deal sheet: the compiled workbook, shown as the spreadsheet it is -->
+  <section class="sec rule-top" id="deal-sheet">
+    <div class="wrap">
+      <div class="head rv">
+        <span class="label">Your deal sheet</span>
+        <h2 class="d2">One sheet, not forty emails.</h2>
+        <p class="lede">Replies come in over a week or two, each one worded to sound like the best offer.
+          Your agent files every one into the same sheet as it lands &mdash; vehicle price, each fee, tax
+          and title, your trade &mdash; and keeps the math current. This is the document you decide from,
+          and it stays yours afterwards.</p>
+      </div>
+
+      <figure class="sheet rv">
+        <div class="sheet__box">
+          <div class="sheet__bar">
+            <span class="sheet__file">
+              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+                <g stroke="currentColor" stroke-width="1.3" fill="none">
+                  <rect x="1.4" y="1.4" width="13.2" height="13.2"/>
+                  <path d="M1.4 6h13.2M1.4 10.5h13.2M6.5 1.4v13.2"/>
+                </g>
+              </svg>
+              gv80-3.5t-prestige.xlsx
+            </span>
+            <span class="sheet__live"><i aria-hidden="true"></i>Updated as each reply lands</span>
+          </div>
+
+          <div class="sheet__fx">
+            <span class="sheet__ref num" aria-hidden="true">G8</span>
+            <code>=MIN(G2:G7)</code>
+          </div>
+
+          <div class="sheet__scroll">
+            <table class="grid">
+              <caption class="sr-only">Out-the-door quotes compiled from every dealer that replied</caption>
+              <colgroup>
+                <col style="width:34px"><col style="width:110px"><col style="width:58px">
+                <col style="width:112px"><col style="width:114px"><col style="width:104px">
+                <col style="width:102px"><col style="width:120px"><col style="width:200px">
+              </colgroup>
+              <thead>
+                <tr class="cols" aria-hidden="true">
+                  <td class="rownum"></td><td class="c-dealer">A</td><td>B</td><td>C</td><td>D</td>
+                  <td>E</td><td>F</td><td>G</td><td>H</td>
+                </tr>
+                <tr class="names">
+                  <td class="rownum" aria-hidden="true">1</td>
+                  <th scope="col" class="c-dealer">Dealer</th>
+                  <th scope="col">Mi</th>
+                  <th scope="col">Vehicle</th>
+                  <th scope="col">Fees &amp; add-ons</th>
+                  <th scope="col">Tax, title</th>
+                  <th scope="col">Trade</th>
+                  <th scope="col">Out the door</th>
+                  <th scope="col">What your agent got</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="is-win" style="--i:1">
+                  <td class="rownum" aria-hidden="true">2</td>
+                  <th scope="row" class="c-dealer">Dealer A</th>
+                  <td>14</td><td>$57,900</td><td>$1,190</td><td>$4,150</td><td>&minus;$2,000</td>
+                  <td class="c-otd">$61,240</td>
+                  <td class="c-note">Nitrogen fill and pinstriping struck off</td>
+                </tr>
+                <tr style="--i:2">
+                  <td class="rownum" aria-hidden="true">3</td>
+                  <th scope="row" class="c-dealer">Dealer B</th>
+                  <td>31</td><td>$58,400</td><td>$2,150</td><td>$4,150</td><td>&minus;$2,000</td>
+                  <td class="c-otd">$62,700</td>
+                  <td class="c-note">Held on a $895 protection package</td>
+                </tr>
+                <tr style="--i:3">
+                  <td class="rownum" aria-hidden="true">4</td>
+                  <th scope="row" class="c-dealer">Dealer C</th>
+                  <td>52</td><td>$57,650</td><td>$1,480</td><td>$4,150</td><td>&minus;$1,300</td>
+                  <td class="c-otd">$61,980</td>
+                  <td class="c-note">Lowest sticker, but valued the trade $700 under</td>
+                </tr>
+                <tr style="--i:4">
+                  <td class="rownum" aria-hidden="true">5</td>
+                  <th scope="row" class="c-dealer">Dealer D</th>
+                  <td>68</td><td>$58,900</td><td>$1,240</td><td>$4,150</td><td>&minus;$2,000</td>
+                  <td class="c-otd">$62,290</td>
+                  <td class="c-note">Would not cover the freight charge</td>
+                </tr>
+                <tr style="--i:5">
+                  <td class="rownum" aria-hidden="true">6</td>
+                  <th scope="row" class="c-dealer">Dealer E</th>
+                  <td>12</td><td>$59,450</td><td>$1,690</td><td>$4,150</td><td>&minus;$1,850</td>
+                  <td class="c-otd">$63,440</td>
+                  <td class="c-note">Stayed at sticker on this trim</td>
+                </tr>
+                <tr style="--i:6">
+                  <td class="rownum" aria-hidden="true">7</td>
+                  <th scope="row" class="c-dealer">Dealer F</th>
+                  <td>44</td>
+                  <td class="na">&mdash;</td><td class="na">&mdash;</td><td class="na">&mdash;</td>
+                  <td class="na">&mdash;</td><td class="c-otd na">&mdash;</td>
+                  <td class="c-note">Sold the car before it quoted a price</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr style="--i:7">
+                  <td class="rownum" aria-hidden="true">8</td>
+                  <th scope="row" class="c-dealer">Lowest</th>
+                  <td colspan="5">Nine dealers contacted, six replied, five priced the car</td>
+                  <td class="c-otd cell--live">$61,240</td>
+                  <td class="c-note">$2,200 between the best and worst quote</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <ul class="sheet__tabs">
+            <li class="is-on">Offers</li>
+            <li>Fees &amp; add-ons</li>
+            <li>Trade-in</li>
+            <li>Financing</li>
+            <li>Email log</li>
+          </ul>
+        </div>
+        <figcaption>Illustrative sheet. The columns and the arithmetic are the real ones &mdash; every
+          quote is priced out the door, so a low sticker with a thin trade offer cannot hide in it. The
+          dealers and figures show the shape of a deal rather than one customer&rsquo;s.</figcaption>
+      </figure>
+
+      <ul class="trio rv" style="--d:90ms">
+        <li>
+          <b>Yours to keep</b>
+          <span>It goes out as a spreadsheet and a PDF, so you still have the whole file long after the
+            deal closes.</span>
+        </li>
+        <li>
+          <b>Made to be shown to someone</b>
+          <span>Plain enough to hand to your spouse, your credit union, or the dealer you are about to
+            sign with.</span>
+        </li>
+        <li>
+          <b>Every figure traces back</b>
+          <span>Each number is filed against the email it came from, quoted and timestamped, so you can
+            check any line yourself.</span>
+        </li>
+      </ul>
     </div>
   </section>
 
