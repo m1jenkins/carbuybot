@@ -398,6 +398,20 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .fstat.err{color:#F1A9A2}
 .fnote{margin-top:8px;font-size:12.5px;color:var(--on-dark-mute);max-width:52ch}
 
+/* ── checkout result ───────────────────────────────────────────────── */
+.result-page{min-height:100svh;background:var(--ink-2);color:var(--on-dark)}
+.result-shell{
+  width:min(100%,880px);min-height:100svh;margin:0 auto;padding:clamp(30px,5vw,64px) var(--gut);
+  display:flex;flex-direction:column;
+}
+.result-brand{align-self:flex-start;font-size:15px;font-weight:500;letter-spacing:.015em;text-decoration:none}
+.result-copy{margin-block:auto;padding-block:clamp(72px,12vw,140px);max-width:680px}
+.result-copy .d2{margin-top:20px}
+.result-copy .lede{margin-top:24px;max-width:52ch}
+.result-copy>.btn{margin-top:34px}
+.result-amount{margin-top:20px;font-size:clamp(32px,5vw,54px);line-height:1;letter-spacing:-.035em}
+.auth-form{margin-top:38px}
+
 /* ── footer ────────────────────────────────────────────────────────── */
 footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,80px) 40px}
 .fgrid{display:flex;flex-wrap:wrap;align-items:center;gap:24px 40px;padding-bottom:34px;border-bottom:1px solid var(--rule-dark-2)}

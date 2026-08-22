@@ -321,6 +321,22 @@ export type Database = {
         };
         Returns: number;
       };
+      fulfill_stripe_event: {
+        Args: {
+          p_amount_cents: number | null;
+          p_checkout_session_id: string | null;
+          p_currency: string | null;
+          p_customer_email: string | null;
+          p_customer_id: string | null;
+          p_engagement_id: string | null;
+          p_event_id: string;
+          p_event_type: string;
+          p_fulfill: boolean;
+          p_payment_intent_id: string | null;
+          p_price_id: string | null;
+        };
+        Returns: boolean;
+      };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

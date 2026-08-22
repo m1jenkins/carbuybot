@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -15,6 +15,20 @@ const config = readFileSync(
   "utf8",
 );
 const normalizedSql = migration.replace(/\s+/g, " ");
+const stripeFulfillmentMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_stripe_fulfillment.sql"));
+const stripeFulfillmentMigration = stripeFulfillmentMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        stripeFulfillmentMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
+const normalizedStripeSql = stripeFulfillmentMigration.replace(/\s+/g, " ");
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -57,6 +71,49 @@ describe("engagement database privileges", () => {
     expect(claimFunction).not.toContain("security definer");
     expect(claimFunction).toContain("insert into public.profiles");
     expect(claimFunction).toContain("update public.engagements");
+  });
+
+  it("makes webhook event insertion and fulfillment one service-role transaction", () => {
+    expect(normalizedStripeSql).toContain(
+      "create or replace function public.fulfill_stripe_event(",
+    );
+    expect(normalizedStripeSql).toContain(
+      "security invoker set search_path = ''",
+    );
+    expect(normalizedStripeSql).toContain(
+      "insert into public.stripe_events (event_id, event_type)",
+    );
+    expect(normalizedStripeSql).toContain("on conflict (event_id) do nothing");
+    expect(normalizedStripeSql).toContain("update public.engagements");
+    expect(normalizedStripeSql).toContain(
+      "raise exception 'Matching pending engagement was not found'",
+    );
+    expect(normalizedStripeSql).toContain(
+      "revoke all on function public.fulfill_stripe_event(text, text, boolean, uuid, text, text, text, text, bigint, text, text) from public, anon, authenticated;",
+    );
+    expect(normalizedStripeSql).toContain(
+      "grant execute on function public.fulfill_stripe_event(text, text, boolean, uuid, text, text, text, text, bigint, text, text) to service_role;",
+    );
+
+    const fulfillmentFunction = normalizedStripeSql.match(
+      /create or replace function public\.fulfill_stripe_event\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(fulfillmentFunction).toBeDefined();
+    expect(fulfillmentFunction).not.toContain("security definer");
+    expect(fulfillmentFunction).toContain(
+      "insert into public.stripe_events (event_id, event_type)",
+    );
+    expect(fulfillmentFunction).toContain(
+      "on conflict (event_id) do nothing",
+    );
+    expect(fulfillmentFunction).toContain("return false;");
+    expect(fulfillmentFunction).toContain("update public.engagements");
+    expect(fulfillmentFunction).toContain(
+      "raise exception 'Matching pending engagement was not found'",
+    );
+    expect(fulfillmentFunction!.indexOf("insert into public.stripe_events")).toBeLessThan(
+      fulfillmentFunction!.indexOf("update public.engagements"),
+    );
   });
 });
 
