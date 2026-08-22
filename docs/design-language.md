@@ -93,6 +93,15 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
   one labelled group per dimension via `data-col` — it never becomes a one-column-at-a-time scroll.
 - **Negotiation thread:** hairline-separated messages, no chat bubbles. Dealer in `--on-dark-soft`,
   agent in `--on-dark`, and the message where the deal closed carries a 2px teal spine.
+- **Hero worklog:** the artifact on the hero photograph is a typeset record of what the agent did on
+  one real search — hairline rows of timestamp, action and figure — not an interface. It has no
+  window chrome, no avatars, no composing caret and no live state, which is what separates it from
+  the hero UI mockup in the anti-patterns list. It reads as a ledger, so it obeys the ledger's
+  rules: rows size to their own content, nothing animates height, nothing is masked, and the entry
+  where the buyer approved carries the same teal spine as the closing message in the thread. It
+  carries breadth — six dealers worked at once, a counter answered at 11:26pm, the buyer approving
+  the last number — and hands depth off to the negotiation thread rather than restating it. Below
+  720px the timestamp takes its own line and the log folds to three entries.
 - **Pricing:** one figure at `clamp(74px,12vw,164px)`, the struck previous price beside it, and
   inclusions as a plain hairline list. Never plan cards.
 - **Forms:** on dark, the email input is a bottom hairline only, no filled box; focus moves the
