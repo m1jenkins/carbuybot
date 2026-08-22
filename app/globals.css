@@ -343,7 +343,7 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(34px,6vw,92px);align-items:start}
 .price__amt{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
 .price__amt b{font-size:clamp(74px,12vw,164px);font-weight:400;line-height:.86;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
-.price__amt s{font-size:clamp(20px,2.2vw,28px);color:var(--meta);text-decoration-thickness:1px;font-variant-numeric:tabular-nums}
+.price__amt .price__standard{font-size:clamp(20px,2.2vw,28px);color:var(--meta);font-variant-numeric:tabular-nums}
 .price__l>*+*{margin-top:22px}
 .price__note{font-size:14.5px;color:var(--meta)}
 .incl{border-top:1px solid var(--ink)}

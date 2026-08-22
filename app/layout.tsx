@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 const description =
-  "Tell us the car you want. Your agent emails every dealer that has one, negotiates the out-the-door price with all of them at once, and sends you the offers to compare. $349 flat. If it doesn't save you more than that, you pay nothing.";
+  "Tell us the car you want. Your agent negotiates with every dealer and sends you the offers to compare. The first 100 Checkout reservations are $349, then the service is $399. If it doesn't save more than your service fee, we refund that fee.";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -18,7 +18,7 @@ const structuredData = {
       description:
         "A car buying service that negotiates for you. Your agent finds the car at dealers near you, emails all of them, and negotiates the out-the-door price on your behalf.",
       areaServed: { "@type": "Country", name: "United States" },
-      priceRange: "$349",
+      priceRange: "$349–$399",
       knowsAbout: [
         "car buying service",
         "car price negotiation",
@@ -35,11 +35,32 @@ const structuredData = {
       brand: { "@id": "https://carbuyerbots.com/#org" },
       url: "https://carbuyerbots.com/",
       offers: {
-        "@type": "Offer",
-        price: "349.00",
+        "@type": "AggregateOffer",
+        lowPrice: "349.00",
+        highPrice: "399.00",
         priceCurrency: "USD",
-        availability: "https://schema.org/InStock",
+        offerCount: 2,
         url: "https://carbuyerbots.com/#pricing",
+        offers: [
+          {
+            "@type": "Offer",
+            price: "349.00",
+            priceCurrency: "USD",
+            description:
+              "Introductory price for the first 100 Checkout reservations.",
+            availability: "https://schema.org/InStock",
+            url: "https://carbuyerbots.com/#pricing",
+          },
+          {
+            "@type": "Offer",
+            price: "399.00",
+            priceCurrency: "USD",
+            description:
+              "Standard price after the first 100 Checkout reservations.",
+            availability: "https://schema.org/InStock",
+            url: "https://carbuyerbots.com/#pricing",
+          },
+        ],
       },
     },
     {
@@ -66,7 +87,7 @@ const structuredData = {
           name: "Is this like a car broker?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "A broker charges $500 to $2,500 and usually works one dealer relationship at a time. Your agent costs $349 and works every dealer at the same time. Brokers are sometimes paid by the dealer too. We are paid only by you.",
+            text: "A broker charges $500 to $2,500 and usually works one dealer relationship at a time. Our service is $349 for the first 100 Checkout reservations and $399 after that, and your agent works every dealer at the same time. Brokers are sometimes paid by the dealer too. We are paid only by you.",
           },
         },
         {
@@ -109,7 +130,7 @@ export const metadata: Metadata = {
     url: "/",
     title: "CarBuyerBots | Let a bot haggle for your next car",
     description:
-      "Your agent emails every dealer that has your car and negotiates all of them at the same time. You compare the offers and sign. $349 flat, refunded if it doesn't save you more.",
+      "Your agent negotiates with every dealer that has your car. $349 intro / $399 standard, with a full refund if savings don't exceed your service fee.",
     images: ["/og.jpg"],
     siteName: "CarBuyerBots",
   },
@@ -117,7 +138,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "CarBuyerBots | Let a bot haggle for your next car",
     description:
-      "Your agent negotiates with every dealer that has your car at the same time. You compare out-the-door prices and sign. $349 flat.",
+      "Your agent negotiates with every dealer that has your car. $349 intro / $399 standard. Compare out-the-door prices and sign.",
     images: ["/og.jpg"],
   },
   icons: {

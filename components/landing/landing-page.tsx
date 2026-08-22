@@ -109,7 +109,7 @@ export function LandingPage() {
         <div className="rail">
           <div className="wrap">
             <ul>
-              <li><b>$349 flat, one car</b><span>You pay once. No subscription, nothing to upgrade to.</span></li>
+              <li><b>$349 intro / $399 standard</b><span>One car, paid once. The first 100 Checkout reservations get the intro price.</span></li>
               <li><b>Dealers never pay us a cent</b><span>You are the only party on either side who pays us.</span></li>
               <li><b>You approve every number</b><span>Nothing is agreed or signed without you.</span></li>
             </ul>
@@ -385,7 +385,7 @@ export function LandingPage() {
                   <tr>
                     <th scope="row">Typical cost</th>
                     <td className="cost" data-col="Coaching tools">$10 to $79</td>
-                    <td className="us cost" data-col="CarBuyerBots">$349 flat</td>
+                    <td className="us cost" data-col="CarBuyerBots">$349 intro / $399 standard</td>
                     <td className="cost" data-col="Human broker">$500 to $2,500, or 1% to 5%</td>
                   </tr>
                 </tbody>
@@ -406,11 +406,11 @@ export function LandingPage() {
 
             <div className="price">
               <div className="price__l rv">
-                <div className="price__amt"><b className="num">$349</b><s className="num">$399</s></div>
+                <div className="price__amt"><b className="num">$349</b><span className="price__standard num">intro / $399 standard</span></div>
                 <p className="price__note">You pay once, per car. $349 for the first 100 checkout reservations, then $399.
                   Checkout first, then complete your vehicle brief.</p>
                 <div className="gtee">
-                  <b>Save more than $349, or you <span className="money">don&rsquo;t pay it</span>.</b>
+                  <b>Save more than your service fee, or you <span className="money">don&rsquo;t pay it</span>.</b>
                   <p>If your agent can&rsquo;t negotiate savings bigger than its own fee, we refund you in full.
                     There is no subscription and no commission from the other side.</p>
                 </div>
@@ -452,8 +452,9 @@ export function LandingPage() {
               <details>
                 <summary>Is this like a car broker?</summary>
                 <p className="answer">A broker charges $500 to $2,500 and usually works one dealer relationship at a
-                  time. Your agent costs $349 and works every dealer at the same time. Brokers are also sometimes
-                  paid by the dealer. We are paid only by you.</p>
+                  time. Our service is $349 for the first 100 Checkout reservations and $399 after that, and your
+                  agent works every dealer at the same time. Brokers are also sometimes paid by the dealer. We are
+                  paid only by you.</p>
               </details>
               <details>
                 <summary>Do you handle new and used cars?</summary>
@@ -523,7 +524,7 @@ export function LandingPage() {
       </footer>
 
       <div className="mcta" id="mcta">
-        <span><b>$349 flat per car</b><span>refunded if it saves you less</span></span>
+        <span><b>$349 intro / $399 standard</b><span>full refund if savings don&rsquo;t exceed your fee</span></span>
         <a className="btn btn--light" href="#start">Start my search</a>
       </div>
     </>
