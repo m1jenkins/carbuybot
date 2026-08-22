@@ -281,3 +281,75 @@ Result before report append: exit 0.
   application feature in this change. Pending rows older than the 23-hour
   retry window require the documented Stripe-log reconciliation before any
   manual release.
+
+## Final Important pricing-copy finding — 2026-08-22
+
+### Status and commit
+
+Implemented and committed:
+
+- `e4cd895 Qualify introductory pricing claims`
+
+Audited all tracked `$349`, `349.00`, and `34900` occurrences. Public landing
+copy, metadata descriptions, Open Graph, Twitter, JSON-LD, comparison pricing,
+FAQ, guarantee, trust rail, and mobile CTA now distinguish the $349
+introductory price from the $399 standard price. Guarantee language compares
+savings with the customer's actual service fee.
+
+The Product JSON-LD now uses an `AggregateOffer` with a `$349.00` low price,
+`$399.00` high price, two explicitly described child offers, and organization
+price range `$349–$399`. It no longer publishes one unconditional $349 Offer.
+
+Remaining source occurrences are transactional selected-price displays,
+database amount snapshots, explicitly qualified setup documentation, tests, or
+prohibited planning/design artifacts. No planning artifact was modified.
+
+### TDD and verification evidence
+
+Focused RED:
+
+```text
+npm test -- --run "components/landing/landing-page.test.tsx"
+```
+
+Result before implementation: expected exit 1; 1 file failed; 3 tests failed
+and 2 passed. Failures identified unconditional rendered/static `$349 flat`
+claims and one-price metadata/structured data.
+
+Focused GREEN:
+
+```text
+npm test -- --run "components/landing/landing-page.test.tsx"
+```
+
+Result: exit 0; 1 file passed; 5 tests passed. Coverage renders the landing
+copy, statically scans both public marketing sources for fixed claims, checks
+fee-relative guarantee wording, inspects metadata, renders and parses JSON-LD,
+and asserts the aggregate range and qualified offers.
+
+```text
+npm test
+```
+
+Result: exit 0; 33 files passed; 267 tests passed.
+
+```text
+npm run lint
+npm run typecheck
+npm run build
+git diff --check
+git diff --check HEAD~1..HEAD
+```
+
+Results: all exit 0. ESLint reported no findings, `tsc --noEmit` was clean,
+Next.js 16.3.2 compiled and generated all pages, and both working-tree and
+committed-range diff checks passed.
+
+### Concerns
+
+- No deployed social-card crawler or search-engine rich-results validator was
+  available. Rendered JSON parsing and structural assertions validate the
+  local output.
+- Actual `$349.00` amounts remain visible for engagements and Checkout
+  Sessions that selected the introductory snapshot; those are transaction
+  facts, not unconditional public pricing claims.
