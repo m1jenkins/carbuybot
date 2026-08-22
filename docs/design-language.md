@@ -1,36 +1,27 @@
 # CarBuyerBots — Design Language
 
-Derived via the [visual-taste-lab](https://github.com/siuserxiaowei/visual-taste-lab) workflow (VI audit → site-type classification → tokens → components → verification).
+Editorial, photo-first. Revised 2026-08-21, replacing the earlier indigo/teal product-UI direction.
 
 ## Direction
 
-- **Name:** Straight-shooter conversion
-- **Archetype:** Consumer Product Launch × Sharp Transactional Utility
+- **Name:** Documentary buyer's agent
+- **Archetype:** Automotive brand editorial × calm fiduciary
 - **Site type:** Product website (single-service conversion page)
-- **Audience:** U.S. car buyers who dread haggling and are skeptical of AI gimmicks and lead-gen funnels
-- **Impression in 5 seconds:** "A real service will negotiate my car deal for a flat fee — and it isn't a scam."
-- **What must feel true:** Buyer-funded, transparent numbers, human stays in control
-- **Primary user task:** Enter email to start the brief
-- **Main risk if the design is wrong:** Looks like dealer lead-gen or hype AI startup → trust collapses
+- **Audience:** U.S. car buyers who dread haggling and distrust both dealer funnels and AI hype
+- **Impression in 5 seconds:** "This is a serious service, and it works for me, not the dealer."
+- **What must feel true:** buyer-funded, transparent numbers, human stays in control
+- **Primary user task:** leave an email to start the brief
+- **Main risk if the design is wrong:** reads as dealer lead-gen or template SaaS → trust collapses
 
-## Brand / VI Audit
+### References
 
-- **Existing logo:** Indigo gradient rounded tile (`#6366F1→#4338CA`) with white steering-wheel glyph — the only place gradients are allowed
-- **Logo shape language:** App-like tile, modest radius (~25% corners), thin white strokes, centered crosshair geometry → informs 10–24px radius system
-- **Primary color:** `#4F46E5` indigo (from logo) / role: brand presence, agent identity, primary CTAs, selected states
-- **Secondary color:** `#0A0F1C` deep navy / role: authority surfaces for evidence sections
-- **Accent color:** `#047857` green / role: money-saved semantics ONLY (savings, guarantee, checkmarks)
-- **Neutral palette:** warm off-white base `#FBFBF9`, white surfaces, `#E6E8EE` hairlines, ink scale `#0D1424→#5D6781`
-- **Why this VI fits:** Indigo reads "capable software agent," not "dealership flags"; green reserved for money builds the save-more promise; restraint signals we don't need tricks
-- **Must not be mistaken for:** dealer lead-gen funnel, crypto-hype startup, template SaaS
-- **References used:** existing logo + plan copy; archetype refs from visual-taste-lab
-- **Rejected:** replacing indigo with fashionable neutrals/violet shifts (would orphan the logo)
+Photography and type follow automotive brand sites — full-bleed vehicle photography with quiet
+type over it, hairline structure, no product UI in the hero. The calm explanatory voice follows
+company "about" pages. Pricing follows studio-fee pages: one number, not plan cards. The
+comparison follows three-way competitor matrices.
 
-## Company vs Product Decision
-
-- Primary subject: product/transaction · Main visitor question: "Will this actually save me money with zero hassle?"
-- Credibility proof: buyer-only compensation model, guarantee, comparison table, sample negotiation
-- Conversion action: email submit (`#start`) · Navigation priority: How it works → Sample negotiation → Compare → Pricing
+Deliberately **not** referenced: developer-tool and SaaS marketing sites (Linear, Framer,
+Zendesk). No gradient hero cards, no floating dashboard screenshots, no feature-icon grids.
 
 ## Tokens
 
@@ -38,54 +29,89 @@ Derived via the [visual-taste-lab](https://github.com/siuserxiaowei/visual-taste
 
 | Token | Value | Role |
 |---|---|---|
-| `--bg` | `#FBFBF9` | page background |
-| `--surface` | `#FFFFFF` | cards, raised panels |
-| `--ink` | `#0D1424` | headings |
-| `--ink-soft` | `#39415A` | body-strong |
-| `--muted` | `#5D6781` | body text (≥AA on bg) |
-| `--line` | `#E6E8EE` | borders/dividers |
-| `--accent` | `#4F46E5` | brand primary |
-| `--accent-deep` | `#3B34C9` | hover state |
-| `--accent-tint` | `#EEF0FF` | selected surface ("us" column) |
-| `--green` / `--green-tint` | `#047857` / `#ECFDF5` | savings/guarantee only |
-| `--dark` | `#0A0F1C` | authority sections |
+| `--ink` | `#0C0D0C` | near-black: dark grounds, primary action, headings |
+| `--ink-2` | `#141719` | dark section ground (the negotiation section) |
+| `--paper` | `#F5F4F1` | warm page background |
+| `--paper-2` | `#FBFAF8` | raised on paper (the "us" column, the winning offer) |
+| `--graphite` | `#54585A` | body text on paper — 6.3:1 |
+| `--meta` | `#6A6E70` | captions, footnotes on paper — 4.6:1 |
+| `--on-dark` | `#F2F1EE` | type on dark |
+| `--on-dark-soft` | `#A9ADAE` | body on dark — 8.0:1 |
+| `--on-dark-mute` | `#83888A` | labels, footnotes on dark |
+| `--rule` / `--rule-2` | `#DEDAD4` / `#EAE7E1` | hairlines on paper |
+| `--rule-dark` / `--rule-dark-2` | `rgba(242,241,238,.16)` / `.08` | hairlines on dark |
+| `--money` / `--money-dark` | `#0F766E` / `#4EC5B4` | **money semantics only** |
 
-Contrast notes: body text never below `--muted`; footnotes use `--muted` not faint gray; on dark sections use `≥ #A6ADC2`.
+The teal is the page's only chromatic accent and appears only on money: the negotiated figure,
+the guarantee, the lowest out-the-door chip, and the message where the deal closed. It is **not**
+the button color — primary actions are near-black on paper and near-white on photography.
 
 ### Typography
 
-- Inter 400–700 throughout; Instrument Serif italic reserved as humanizing accent — max one phrase per section heading
-- H1 `clamp(40px,6.4vw,68px)` · H2 `clamp(30px,4.2vw,44px)` · H3 20px · body 15–18px · eyebrow 12px caps +0.12em tracking
-- Numbers in stats/prices use `font-variant-numeric: tabular-nums`
-- Max text width ~720px
+- **Inter only**, weights 400/500/600. No serif. A single grotesque is part of the direction.
+- Display `clamp(38px,6.9vw,92px)` weight 400, line-height 1, tracking `-.034em` — big and quiet,
+  never bold. Section heads `clamp(31px,4.5vw,58px)` weight 400.
+- Labels/eyebrows: 11px, weight 600, uppercase, tracking `.16em`.
+- Body 16px/1.6; lede `clamp(17px,1.5vw,20px)`. Reading columns bounded at ~66ch.
+- `tabular-nums` on every price, figure, and distance.
+- `text-wrap: balance` on headings, `pretty` on prose. The hero headline is two spans that go
+  block on desktop and inline on mobile, so balance can re-rag it rather than orphan a word.
 
-### Geometry & Motion
+### Geometry & motion
 
-- Container 1120px · section padding 104px desktop / 72px mobile
-- Radius ladder: controls 10–12px, cards 14–20px, feature panel 24px
-- Borders 1px solid `--line`; shadows soft single-source (`--shadow-sm/md`)
-- Motion: 16px rise-on-reveal once per element, 200ms hovers, `prefers-reduced-motion` honored; no parallax/decorative animation
-- Flat surfaces everywhere — glows/gradients live only in the logo
+- Container 1280px, gutter `clamp(20px,5vw,64px)`, section rhythm `clamp(76px,10vw,164px)`.
+- **Radius 0** on panels, tables, and photo plates. Pills (999px) on controls only.
+- **No shadows.** Separation is whitespace → tone → 1px hairline, in that order.
+- Motion: reveals rise 24px over 950ms on `cubic-bezier(.22,.7,.2,1)`; hero and closing plates
+  drift on scroll via `translate3d` + `scale(1.07)`. One rAF-throttled scroll pipeline handles
+  header state, sticky CTA, and drift. `prefers-reduced-motion` leaves a complete static page.
 
-## Component Rules
+## Photo plates
 
-- **Buttons:** one primary style (solid indigo) per viewport; ghost secondary; light-on-dark variant. No gradient fills.
-- **Cards:** explain information boundaries; steps numbered via tinted square chip matching logo geometry
-- **Tables:** preferred for credibility content; "us" column tinted `--accent-tint`, header in `--accent-deep`
-- **Chat/negotiation panel:** dark surface, dealer = neutral slate bubbles, agent = solid indigo; header states *illustrative* status, never simulated live activity
-- **Forms:** dark-section input with focus ring in accent; honest microcopy under submit
-- **Badges:** launch-cohort flag uses `--accent-deep` on `--accent-tint`
-- **Sticky mobile CTA:** price + primary button bar appears after hero scroll, hides at final form
+The signature component. A `.plate` layers three things in a `position:relative`, `overflow:clip`
+box: a `.plate__ground` (hand-built dusk-to-asphalt gradient plus film grain), a `.plate__media`
+holding the photograph, and a `.plate__scrim` gradient that protects type. If a photograph is
+missing or fails to load, JS adds `.plate--noimg` and the built ground shows — the page still reads
+as art-directed rather than broken.
 
-## Copy Rules
+The hero is art-directed per breakpoint: a portrait master for phones and a landscape crop above
+720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
+actually used.
 
-- Honest by default: negotiation examples come from real live threads, condensed and anonymized (names, emails, phones, dealership identity removed); metrics state exactly what they measure (e.g., spread, not savings)
-- No fake operational status ("live", responding counts)
-- CTA verbs: Start / See — never "Claim", "Unlock"
+Photography rules: documentary, cool-dark with warm counterpoints, no faces, and **no
+manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 
-## Anti-Patterns (project-specific)
+## Component rules
 
-- Decorative radial glows or gradient fills outside the logo mark
-- Pulsing dots implying live negotiation traffic
-- Unlabeled fictional transcripts, customers, or dollar figures
-- Green used anywhere except money-saved/guarantee semantics
+- **Buttons:** one primary per viewport. Near-black pill on paper, near-white pill on photography,
+  hairline-outline pill as the light-on-dark secondary. No gradient fills.
+- **Sections instead of cards:** information boundaries come from hairlines and section grounds.
+  The only card-like surfaces are the three offer panels, and they are divided by 1px gaps over a
+  rule-colored background rather than borders plus shadow.
+- **Tables:** the three-way comparison is a real `<table>` with a screen-reader-only caption. The
+  "us" column is a continuous `--paper-2` band from header to last row. Below 720px it stacks into
+  one labelled group per dimension via `data-col` — it never becomes a one-column-at-a-time scroll.
+- **Negotiation thread:** hairline-separated messages, no chat bubbles. Dealer in `--on-dark-soft`,
+  agent in `--on-dark`, and the message where the deal closed carries a 2px teal spine.
+- **Pricing:** one figure at `clamp(74px,12vw,164px)`, the struck previous price beside it, and
+  inclusions as a plain hairline list. Never plan cards.
+- **Forms:** on dark, the email input is a bottom hairline only, no filled box; focus moves the
+  hairline to `--money-dark`.
+
+## Copy rules
+
+- Plain and concrete. Short sentences. Say the number.
+- The negotiation transcript is a real thread, lightly trimmed, with names, dealership identity,
+  and location removed. Figures state exactly what they measure, and the footnote says so.
+- No fake operational status — no "live" counts, no pulsing activity dots.
+- CTA verbs: Start / Read / Send. Never "Claim" or "Unlock".
+
+## Anti-patterns
+
+- Gradient or glow decoration anywhere outside a `.plate__ground`
+- Shadows, or a visible border combined with a shadow
+- Serif type, or display type above weight 500
+- Teal on anything that is not money
+- Feature-icon grids, plan cards, floating product screenshots, hero UI mockups
+- Manufacturer logos in photography
+- Unlabeled illustrative figures
