@@ -155,6 +155,40 @@ describe("IntakeThread", () => {
     expect(screen.getByText(/oldest model year/i)).toBeVisible();
   });
 
+  it("keeps the year question active when the merged range is invalid", async () => {
+    mocks.saveAnswer.mockResolvedValueOnce({
+      ok: false,
+      error: "Minimum year cannot be later than maximum year.",
+    });
+    render(
+      <IntakeThread
+        engagementId="eng_1"
+        initialDraft={{
+          condition: "new",
+          make: "Toyota",
+          model: "RAV4",
+          yearMax: 2024,
+        }}
+        initialQuestionId="yearMin"
+      />,
+    );
+
+    const year = screen.getByRole("textbox", {
+      name: /oldest model year/i,
+    });
+    fireEvent.change(year, { target: { value: "2025" } });
+    fireEvent.submit(year.closest("form")!);
+
+    expect(
+      await screen.findByRole("alert", { name: /answer error/i }),
+    ).toHaveTextContent(/minimum year cannot be later/i);
+    expect(screen.getByText(/oldest model year/i)).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(screen.queryByText(/newest model year/i)).not.toBeInTheDocument();
+  });
+
   it("uses neutral semantic progress and announces the active prompt", () => {
     render(<IntakeThread engagementId="eng_1" initialDraft={{}} />);
 
@@ -217,5 +251,115 @@ describe("IntakeThread", () => {
       mocks.saveAnswer.mock.invocationCallOrder[0],
     ).toBeLessThan(mocks.submitBrief.mock.invocationCallOrder[0]);
     expect(mocks.replace).toHaveBeenCalledWith("/portal");
+  });
+
+  it("retains committed consent and offers a retry when finalization fails", async () => {
+    mocks.submitBrief.mockResolvedValueOnce({
+      ok: false,
+      error: "We could not submit your brief. Your answers are still saved.",
+    });
+    render(
+      <IntakeThread
+        engagementId="eng_1"
+        initialDraft={{
+          condition: "either",
+          make: "Genesis",
+          model: "GV80",
+          yearMin: null,
+          yearMax: null,
+          trim: null,
+          colors: [],
+          options: [],
+          dealBreakers: [],
+          budgetCents: 6000000,
+          city: "Austin",
+          state: "TX",
+          postalCode: "78701",
+          searchRadiusMiles: 100,
+          timeline: "within_30_days",
+          hasTradeIn: false,
+          financingPreference: "undecided",
+          notes: null,
+        }}
+        initialQuestionId="consent"
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /submit my brief/i }),
+    );
+
+    expect(
+      await screen.findByText("Submit my brief", {
+        selector: "[data-message=answer]",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("alert", { name: /answer error/i }),
+    ).toHaveTextContent(/answers are still saved/i);
+    expect(mocks.replace).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /retry submission/i }),
+    );
+    await waitFor(() => {
+      expect(mocks.submitBrief).toHaveBeenCalledTimes(2);
+      expect(mocks.replace).toHaveBeenCalledWith("/portal");
+    });
+    expect(mocks.saveAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves empty-choice labels and exact budget cents in history", () => {
+    render(
+      <IntakeThread
+        engagementId="eng_1"
+        initialDraft={{
+          condition: "either",
+          make: "Genesis",
+          model: "GV80",
+          yearMin: null,
+          yearMax: null,
+          trim: null,
+          colors: [],
+          options: [],
+          dealBreakers: [],
+          budgetCents: 1234567,
+          city: "Austin",
+          state: "TX",
+          postalCode: "78701",
+          searchRadiusMiles: 100,
+          timeline: "within_30_days",
+          hasTradeIn: false,
+          financingPreference: "undecided",
+          notes: null,
+        }}
+        initialQuestionId="consent"
+      />,
+    );
+
+    expect(
+      screen.getByText("No minimum", { selector: "[data-message=answer]" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("No maximum", { selector: "[data-message=answer]" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("No must-haves", {
+        selector: "[data-message=answer]",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("None", { selector: "[data-message=answer]" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Nothing else", {
+        selector: "[data-message=answer]",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("$12,345.67", {
+        selector: "[data-message=answer]",
+      }),
+    ).toBeVisible();
   });
 });

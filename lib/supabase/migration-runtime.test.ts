@@ -29,6 +29,15 @@ const intakeMigration = intakeMigrationName
       "utf8",
     )
   : "";
+const intakeHardeningMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_conversational_intake.sql"));
+const intakeHardeningMigration = intakeHardeningMigrationName
+  ? readFileSync(
+      join(process.cwd(), "supabase/migrations", intakeHardeningMigrationName),
+      "utf8",
+    )
+  : "";
 
 const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const missingEngagementId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
@@ -174,46 +183,133 @@ async function insertClaimedPaidEngagement(db: PGlite) {
   );
 }
 
-const finalizedBrief = {
-  budget_cents: 6_000_000,
+const completeDraftAnswers = {
+  budgetCents: 6_000_000,
   city: "Austin",
   colors: ["Black"],
   condition: "either",
   consent: true,
-  deal_breakers: [],
-  financing_preference: "undecided",
-  has_trade_in: false,
+  dealBreakers: [],
+  financingPreference: "undecided",
+  hasTradeIn: false,
   make: "Genesis",
   model: "GV80",
   notes: null,
   options: ["Advanced package"],
-  postal_code: "78701",
-  search_radius_miles: 100,
+  postalCode: "78701",
+  searchRadiusMiles: 100,
   state: "TX",
   timeline: "within_30_days",
-  trade_in_details: null,
+  tradeInDetails: null,
   trim: null,
-  year_max: 2026,
-  year_min: 2024,
+  yearMax: 2026,
+  yearMin: 2024,
 };
 
 async function finalizeBrief(
   db: PGlite,
-  brief: Record<string, unknown> = finalizedBrief,
   ownerId = userId,
 ) {
   const result = await db.query<{ finalized: boolean }>(
     `
       select public.finalize_vehicle_brief(
         $1::uuid,
-        $2::uuid,
-        $3::jsonb
+        $2::uuid
       ) as finalized
     `,
-    [engagementId, ownerId, JSON.stringify(brief)],
+    [engagementId, ownerId],
   );
 
   return result.rows[0]?.finalized;
+}
+
+async function saveBriefAnswer(
+  db: PGlite,
+  questionId: string,
+  value: unknown,
+  currentQuestionId: string | null,
+) {
+  const result = await db.query<{ answers: Record<string, unknown> }>(
+    `
+      select public.save_brief_answer(
+        $1::uuid,
+        $2::text,
+        $3::jsonb,
+        $4::text
+      ) as answers
+    `,
+    [
+      engagementId,
+      questionId,
+      JSON.stringify(value),
+      currentQuestionId,
+    ],
+  );
+  return result.rows[0]?.answers;
+}
+
+async function insertDraft(
+  db: PGlite,
+  answers: Record<string, unknown>,
+  currentQuestionId: string | null = null,
+) {
+  return asRole(db, "service_role", () =>
+    db.query(
+      `
+        insert into public.brief_drafts (
+          engagement_id,
+          answers,
+          current_question_id
+        )
+        values ($1, $2::jsonb, $3)
+      `,
+      [engagementId, JSON.stringify(answers), currentQuestionId],
+    ),
+  );
+}
+
+async function insertVehicleBriefDirectly(db: PGlite) {
+  return db.query(
+    `
+      insert into public.vehicle_briefs (
+        engagement_id,
+        condition,
+        make,
+        model,
+        colors,
+        options,
+        deal_breakers,
+        budget_cents,
+        city,
+        state,
+        postal_code,
+        search_radius_miles,
+        timeline,
+        has_trade_in,
+        financing_preference,
+        consent
+      )
+      values (
+        $1,
+        'either',
+        'Genesis',
+        'GV80',
+        '{"Black"}',
+        '{}',
+        '{}',
+        6000000,
+        'Austin',
+        'TX',
+        '78701',
+        100,
+        'within_30_days',
+        false,
+        'undecided',
+        true
+      )
+    `,
+    [engagementId],
+  );
 }
 
 describe("Stripe fulfillment migration runtime", () => {
@@ -246,6 +342,7 @@ describe("Stripe fulfillment migration runtime", () => {
     await db.exec(baseMigration);
     await db.exec(fulfillmentMigration);
     await db.exec(intakeMigration);
+    await db.exec(intakeHardeningMigration);
   });
 
   afterEach(async () => {
@@ -393,65 +490,127 @@ describe("Stripe fulfillment migration runtime", () => {
     expect(events.rows[0]?.count).toBe(0);
   });
 
-  it("lets only the paid engagement owner read and update a draft", async () => {
+  it("lets only the paid owner save one answer through the authenticated RPC", async () => {
     await insertClaimedPaidEngagement(db);
-    await asAuthenticatedUser(db, userId, () =>
-      db.query(
-        `
-          insert into public.brief_drafts (
-            engagement_id,
-            answers,
-            current_question_id
-          )
-          values ($1, '{"condition":"new"}'::jsonb, 'make')
-        `,
-        [engagementId],
+
+    await expect(
+      asAuthenticatedUser(db, userId, () =>
+        saveBriefAnswer(db, "condition", "new", "make"),
       ),
-    );
+    ).resolves.toEqual({ condition: "new" });
+    await expect(
+      asAuthenticatedUser(db, otherUserId, () =>
+        saveBriefAnswer(db, "condition", "used", "make"),
+      ),
+    ).rejects.toThrow(/owned paid engagement/i);
 
     const ownerDraft = await asAuthenticatedUser(db, userId, () =>
-      db.query<{ answers: { condition: string } }>(
-        "select answers from public.brief_drafts where engagement_id = $1",
-        [engagementId],
-      ),
-    );
-    expect(ownerDraft.rows[0]?.answers).toEqual({ condition: "new" });
-
-    const otherDrafts = await asAuthenticatedUser(db, otherUserId, () =>
-      db.query<{ count: number }>(
-        "select count(*)::int as count from public.brief_drafts",
-      ),
-    );
-    expect(otherDrafts.rows[0]?.count).toBe(0);
-
-    const forbiddenUpdate = await asAuthenticatedUser(db, otherUserId, () =>
-      db.query(
+      db.query<{
+        answers: { condition: string };
+        current_question_id: string;
+      }>(
         `
-          update public.brief_drafts
-          set answers = '{"condition":"used"}'::jsonb
+          select answers, current_question_id
+          from public.brief_drafts
           where engagement_id = $1
-          returning engagement_id
         `,
         [engagementId],
       ),
     );
-    expect(forbiddenUpdate.rows).toHaveLength(0);
+    expect(ownerDraft.rows[0]).toEqual({
+      answers: { condition: "new" },
+      current_question_id: "make",
+    });
   });
 
-  it("finalizes the brief, workflow, first update, and draft atomically", async () => {
+  it("atomically merges rapid answers without losing either key", async () => {
     await insertClaimedPaidEngagement(db);
-    await asRole(db, "service_role", () =>
-      db.query(
-        `
-          insert into public.brief_drafts (
-            engagement_id,
-            answers,
-            current_question_id
-          )
-          values ($1, $2::jsonb, null)
-        `,
-        [engagementId, JSON.stringify({ consent: true })],
+
+    await asAuthenticatedUser(db, userId, () =>
+      Promise.all([
+        saveBriefAnswer(db, "make", "Genesis", "model"),
+        saveBriefAnswer(db, "model", "GV80", "yearMin"),
+      ]),
+    );
+
+    const draft = await db.query<{
+      answers: { make: string; model: string };
+    }>(
+      "select answers from public.brief_drafts where engagement_id = $1",
+      [engagementId],
+    );
+    expect(draft.rows[0]?.answers).toMatchObject({
+      make: "Genesis",
+      model: "GV80",
+    });
+  });
+
+  it("rejects an inverted year range without changing or advancing the draft", async () => {
+    await insertClaimedPaidEngagement(db);
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "yearMax", 2024, "yearMin"),
+    );
+
+    await expect(
+      asAuthenticatedUser(db, userId, () =>
+        saveBriefAnswer(db, "yearMin", 2025, "yearMax"),
       ),
+    ).rejects.toThrow(/minimum year cannot be later than maximum year/i);
+
+    const draft = await db.query<{
+      answers: Record<string, unknown>;
+      current_question_id: string;
+    }>(
+      `
+        select answers, current_question_id
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(draft.rows[0]).toEqual({
+      answers: { yearMax: 2024 },
+      current_question_id: "yearMin",
+    });
+  });
+
+  it("denies authenticated vehicle-brief inserts before finalization and updates after it", async () => {
+    await insertClaimedPaidEngagement(db);
+
+    await expect(
+      asAuthenticatedUser(db, userId, () => insertVehicleBriefDirectly(db)),
+    ).rejects.toThrow(/permission denied/i);
+
+    await insertDraft(db, completeDraftAnswers);
+    await asRole(db, "service_role", () => finalizeBrief(db));
+
+    await expect(
+      asAuthenticatedUser(db, userId, () =>
+        db.query(
+          `
+            update public.vehicle_briefs
+            set make = 'Tampered'
+            where engagement_id = $1
+          `,
+          [engagementId],
+        ),
+      ),
+    ).rejects.toThrow(/permission denied/i);
+
+    const visibleBrief = await asAuthenticatedUser(db, userId, () =>
+      db.query<{ make: string }>(
+        "select make from public.vehicle_briefs where engagement_id = $1",
+        [engagementId],
+      ),
+    );
+    expect(visibleBrief.rows[0]?.make).toBe("Genesis");
+  });
+
+  it("finalizes the latest locked draft, workflow, first update, and deletion atomically", async () => {
+    await insertClaimedPaidEngagement(db);
+    await insertDraft(db, completeDraftAnswers);
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "make", "Toyota", null),
     );
 
     await expect(
@@ -488,7 +647,7 @@ describe("Stripe fulfillment migration runtime", () => {
     expect(state.rows[0]).toMatchObject({
       budget_cents: 6_000_000,
       draft_count: 0,
-      make: "Genesis",
+      make: "Toyota",
       status: "brief_submitted",
       title: "Brief submitted",
       update_count: 1,
@@ -497,26 +656,12 @@ describe("Stripe fulfillment migration runtime", () => {
     expect(state.rows[0]?.onboarding_completed_at).not.toBeNull();
   });
 
-  it("rolls back every finalization write when the brief is invalid", async () => {
+  it("rolls back every finalization write when the locked draft is invalid", async () => {
     await insertClaimedPaidEngagement(db);
-    await asRole(db, "service_role", () =>
-      db.query(
-        `
-          insert into public.brief_drafts (
-            engagement_id,
-            answers,
-            current_question_id
-          )
-          values ($1, '{"consent":true}'::jsonb, null)
-        `,
-        [engagementId],
-      ),
-    );
+    await insertDraft(db, { ...completeDraftAnswers, postalCode: "12" });
 
     await expect(
-      asRole(db, "service_role", () =>
-        finalizeBrief(db, { ...finalizedBrief, postal_code: "12" }),
-      ),
+      asRole(db, "service_role", () => finalizeBrief(db)),
     ).rejects.toThrow(/postal_code|vehicle_briefs_postal_code_check/i);
 
     const state = await db.query<{
@@ -544,26 +689,12 @@ describe("Stripe fulfillment migration runtime", () => {
     });
   });
 
-  it("rejects a mismatched owner and authenticated RPC execution", async () => {
+  it("rejects a mismatched owner and authenticated finalization execution", async () => {
     await insertClaimedPaidEngagement(db);
-    await asRole(db, "service_role", () =>
-      db.query(
-        `
-          insert into public.brief_drafts (
-            engagement_id,
-            answers,
-            current_question_id
-          )
-          values ($1, '{"consent":true}'::jsonb, null)
-        `,
-        [engagementId],
-      ),
-    );
+    await insertDraft(db, completeDraftAnswers);
 
     await expect(
-      asRole(db, "service_role", () =>
-        finalizeBrief(db, finalizedBrief, otherUserId),
-      ),
+      asRole(db, "service_role", () => finalizeBrief(db, otherUserId)),
     ).rejects.toThrow(/owned paid engagement/i);
     await expect(
       asAuthenticatedUser(db, userId, () => finalizeBrief(db)),

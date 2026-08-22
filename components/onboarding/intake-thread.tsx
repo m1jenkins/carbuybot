@@ -79,6 +79,9 @@ export function IntakeThread({
     return answerForComposer(question, initialDraft[question.id]);
   });
   const [error, setError] = useState("");
+  const [isConsentCommitted, setIsConsentCommitted] = useState(
+    initialDraft.consent === true,
+  );
   const [isPending, startTransition] = useTransition();
   const promptRef = useRef<HTMLParagraphElement>(null);
 
@@ -90,6 +93,8 @@ export function IntakeThread({
   const activeQuestion = questions[activeIndex] ?? questions[0];
   const answeredQuestions = questions.slice(0, activeIndex);
   const position = activeIndex + 1;
+  const showCommittedConsent =
+    activeQuestion.id === "consent" && isConsentCommitted;
 
   useEffect(() => {
     const prompt = promptRef.current;
@@ -111,10 +116,11 @@ export function IntakeThread({
       return;
     }
 
+    const question = activeQuestion;
     startTransition(async () => {
       const saved = await saveAnswer({
         engagementId,
-        questionId: activeQuestion.id,
+        questionId: question.id,
         value: rawValue,
       });
       if (!saved.ok) {
@@ -124,19 +130,19 @@ export function IntakeThread({
 
       let savedValue: unknown;
       try {
-        savedValue = parseIntakeAnswer(activeQuestion.id, saved.value);
+        savedValue = parseIntakeAnswer(question.id, saved.value);
       } catch {
         setError("The saved answer could not be verified. Try again.");
         return;
       }
 
-      const nextAnswers = {
-        ...answers,
-        [activeQuestion.id]: savedValue,
-      };
-      setAnswers(nextAnswers);
+      setAnswers((currentAnswers) => ({
+        ...currentAnswers,
+        [question.id]: savedValue,
+      }));
 
-      if (activeQuestion.id === "consent") {
+      if (question.id === "consent") {
+        setIsConsentCommitted(true);
         const submitted = await submitBrief({ engagementId });
         if (!submitted.ok) {
           setError(submitted.error);
@@ -147,18 +153,32 @@ export function IntakeThread({
       }
 
       const nextQuestionId = getNextQuestionId(
-        nextAnswers,
-        activeQuestion.id,
+        { [question.id]: savedValue },
+        question.id,
       );
       if (nextQuestionId) {
-        const nextQuestion = getVisibleQuestions(nextAnswers).find(
-          (question) => question.id === nextQuestionId,
+        const nextQuestion = getVisibleQuestions({
+          [question.id]: savedValue,
+        }).find(
+          (candidate) => candidate.id === nextQuestionId,
         )!;
         setComposerValue(
-          answerForComposer(nextQuestion, nextAnswers[nextQuestionId]),
+          answerForComposer(nextQuestion, answers[nextQuestionId]),
         );
         setActiveQuestionId(nextQuestionId);
       }
+    });
+  }
+
+  function retrySubmission() {
+    setError("");
+    startTransition(async () => {
+      const submitted = await submitBrief({ engagementId });
+      if (!submitted.ok) {
+        setError(submitted.error);
+        return;
+      }
+      router.replace("/portal");
     });
   }
 
@@ -173,6 +193,9 @@ export function IntakeThread({
       return;
     }
     setError("");
+    if (showCommittedConsent) {
+      setIsConsentCommitted(false);
+    }
     setComposerValue(
       answerForComposer(previousQuestion, answers[previousQuestion.id]),
     );
@@ -246,7 +269,13 @@ export function IntakeThread({
             {activeQuestion.prompt}
           </p>
 
-          {activeQuestion.choices && (
+          {showCommittedConsent && (
+            <p className="intake__answer" data-message="answer">
+              {formatIntakeAnswer(activeQuestion, true)}
+            </p>
+          )}
+
+          {activeQuestion.choices && !showCommittedConsent && (
             <fieldset
               className="intake__replies"
               disabled={isPending}
@@ -296,7 +325,18 @@ export function IntakeThread({
             <span aria-hidden="true">←</span> Back
           </button>
 
-          {usesComposer(activeQuestion) && (
+          {showCommittedConsent && (
+            <button
+              className="intake__reply"
+              type="button"
+              onClick={retrySubmission}
+              disabled={isPending}
+            >
+              {isPending ? "Submitting…" : "Retry submission"}
+            </button>
+          )}
+
+          {usesComposer(activeQuestion) && !showCommittedConsent && (
             <form
               className={`intake__composer${
                 activeQuestion.kind === "currency"

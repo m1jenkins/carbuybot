@@ -82,35 +82,33 @@ export async function saveAnswer(
     };
   }
 
-  const { data: draft, error: readError } = await supabase
-    .from("brief_drafts")
-    .select("answers")
-    .eq("engagement_id", engagementId.data)
-    .maybeSingle();
-
-  if (readError) {
-    return {
-      ok: false,
-      error: "We could not load your saved answers. Try again.",
-    };
-  }
-
-  const answers: IntakeAnswers = {
-    ...asAnswers(draft?.answers),
-    [input.questionId]: normalized,
-  };
-  const currentQuestionId = getNextQuestionId(answers, input.questionId);
-  const { error: saveError } = await supabase.from("brief_drafts").upsert(
-    {
-      engagement_id: engagementId.data,
-      answers: answers as Json,
-      current_question_id: currentQuestionId,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "engagement_id" },
+  const currentQuestionId = getNextQuestionId(
+    { [input.questionId]: normalized },
+    input.questionId,
   );
+  const { error: saveError } = await supabase.rpc("save_brief_answer", {
+    p_current_question_id: currentQuestionId,
+    p_engagement_id: engagementId.data,
+    p_question_id: input.questionId,
+    p_value: normalized as Json,
+  });
 
   if (saveError) {
+    if (
+      input.questionId === "yearMin" ||
+      input.questionId === "yearMax"
+    ) {
+      if (
+        saveError.message
+          .toLowerCase()
+          .includes("minimum year cannot be later than maximum year")
+      ) {
+        return {
+          ok: false,
+          error: "Minimum year cannot be later than maximum year.",
+        };
+      }
+    }
     return {
       ok: false,
       error: "We could not save that answer. Try again.",
@@ -150,9 +148,8 @@ export async function submitBrief(
     };
   }
 
-  let brief;
   try {
-    brief = buildBriefFromAnswers(answers);
+    buildBriefFromAnswers(answers);
   } catch {
     return {
       ok: false,
@@ -160,35 +157,33 @@ export async function submitBrief(
     };
   }
 
-  const admin = createAdminClient();
-  const { error: finalizeError } = await admin.rpc("finalize_vehicle_brief", {
-    p_engagement_id: engagementId.data,
-    p_user_id: user.id,
-    p_brief: {
-      budget_cents: brief.budgetCents,
-      city: brief.city,
-      colors: brief.colors,
-      condition: brief.condition,
-      consent: brief.consent,
-      deal_breakers: brief.dealBreakers,
-      financing_preference: brief.financingPreference,
-      has_trade_in: brief.hasTradeIn,
-      make: brief.make,
-      model: brief.model,
-      notes: brief.notes ?? null,
-      options: brief.options,
-      postal_code: brief.postalCode,
-      search_radius_miles: brief.searchRadiusMiles,
-      state: brief.state,
-      timeline: brief.timeline,
-      trade_in_details: brief.tradeInDetails ?? null,
-      trim: brief.trim ?? null,
-      year_max: brief.yearMax ?? null,
-      year_min: brief.yearMin ?? null,
-    },
-  });
+  try {
+    const admin = createAdminClient();
+    const { error: finalizeError } = await admin.rpc(
+      "finalize_vehicle_brief",
+      {
+        p_engagement_id: engagementId.data,
+        p_user_id: user.id,
+      },
+    );
 
-  if (finalizeError) {
+    if (finalizeError) {
+      return {
+        ok: false,
+        error: "We could not submit your brief. Your answers are still saved.",
+      };
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
+    ) {
+      return {
+        ok: false,
+        error:
+          "Secure submission is not configured. Your answers are saved; contact support before trying again.",
+      };
+    }
     return {
       ok: false,
       error: "We could not submit your brief. Your answers are still saved.",

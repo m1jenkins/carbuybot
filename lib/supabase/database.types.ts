@@ -371,11 +371,19 @@ export type Database = {
       };
       finalize_vehicle_brief: {
         Args: {
-          p_brief: Json;
           p_engagement_id: string;
           p_user_id: string;
         };
         Returns: boolean;
+      };
+      save_brief_answer: {
+        Args: {
+          p_current_question_id: string | null;
+          p_engagement_id: string;
+          p_question_id: string;
+          p_value: Json;
+        };
+        Returns: Json;
       };
     };
     Enums: Record<never, never>;

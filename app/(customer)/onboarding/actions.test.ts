@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => {
     draftQuery,
     from: vi.fn(),
     getUser: vi.fn(),
+    serverRpc: vi.fn(),
     select: vi.fn(),
-    upsert: vi.fn(),
   };
 });
 
@@ -72,14 +72,17 @@ describe("onboarding server actions", () => {
       error: null,
     });
     mocks.select.mockReturnValue(mocks.draftQuery);
-    mocks.upsert.mockResolvedValue({ error: null });
     mocks.from.mockReturnValue({
       select: mocks.select,
-      upsert: mocks.upsert,
+    });
+    mocks.serverRpc.mockResolvedValue({
+      data: { condition: "new", make: "Toyota" },
+      error: null,
     });
     mocks.createServerClient.mockResolvedValue({
       auth: { getUser: mocks.getUser },
       from: mocks.from,
+      rpc: mocks.serverRpc,
     });
     mocks.adminRpc.mockResolvedValue({ data: true, error: null });
     mocks.createAdminClient.mockReturnValue({ rpc: mocks.adminRpc });
@@ -101,10 +104,10 @@ describe("onboarding server actions", () => {
       ok: false,
       error: "Sign in again before saving your answer.",
     });
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.serverRpc).not.toHaveBeenCalled();
   });
 
-  it("validates and normalizes one answer before persisting the merged draft", async () => {
+  it("validates and normalizes one answer before calling the atomic save RPC", async () => {
     const result = await saveAnswer({
       engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
       questionId: "make",
@@ -112,16 +115,13 @@ describe("onboarding server actions", () => {
     });
 
     expect(result).toEqual({ ok: true, value: "Toyota" });
-    expect(mocks.from).toHaveBeenCalledWith("brief_drafts");
-    expect(mocks.upsert).toHaveBeenCalledWith(
-      {
-        engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
-        answers: { condition: "new", make: "Toyota" },
-        current_question_id: "model",
-        updated_at: expect.any(String),
-      },
-      { onConflict: "engagement_id" },
-    );
+    expect(mocks.serverRpc).toHaveBeenCalledWith("save_brief_answer", {
+      p_current_question_id: "model",
+      p_engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      p_question_id: "make",
+      p_value: "Toyota",
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid answer before touching the draft", async () => {
@@ -138,7 +138,27 @@ describe("onboarding server actions", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
-  it("validates the complete persisted draft and finalizes as service role", async () => {
+  it("returns the field-specific merged year error from the save RPC", async () => {
+    mocks.serverRpc.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: "Minimum year cannot be later than maximum year",
+      },
+    });
+
+    await expect(
+      saveAnswer({
+        engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
+        questionId: "yearMin",
+        value: "2025",
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "Minimum year cannot be later than maximum year.",
+    });
+  });
+
+  it("validates the complete persisted draft and finalizes its locked row", async () => {
     mocks.draftQuery.maybeSingle.mockResolvedValueOnce({
       data: { answers: completeAnswers },
       error: null,
@@ -151,31 +171,30 @@ describe("onboarding server actions", () => {
     ).resolves.toEqual({ ok: true });
 
     expect(mocks.adminRpc).toHaveBeenCalledWith("finalize_vehicle_brief", {
-      p_brief: {
-        budget_cents: 6000000,
-        city: "Austin",
-        colors: ["Black"],
-        condition: "either",
-        consent: true,
-        deal_breakers: [],
-        financing_preference: "undecided",
-        has_trade_in: false,
-        make: "Genesis",
-        model: "GV80",
-        notes: null,
-        options: ["Advanced package"],
-        postal_code: "78701",
-        search_radius_miles: 100,
-        state: "TX",
-        timeline: "within_30_days",
-        trade_in_details: null,
-        trim: null,
-        year_max: 2026,
-        year_min: 2024,
-      },
       p_engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
       p_user_id: "user_1",
     });
+  });
+
+  it("returns an actionable result when service-role configuration is missing", async () => {
+    mocks.draftQuery.maybeSingle.mockResolvedValueOnce({
+      data: { answers: completeAnswers },
+      error: null,
+    });
+    mocks.createAdminClient.mockImplementationOnce(() => {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+    });
+
+    await expect(
+      submitBrief({
+        engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      error:
+        "Secure submission is not configured. Your answers are saved; contact support before trying again.",
+    });
+    expect(mocks.adminRpc).not.toHaveBeenCalled();
   });
 
   it("does not invoke finalization for an incomplete draft", async () => {

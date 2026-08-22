@@ -43,6 +43,23 @@ const conversationalIntakeMigration = conversationalIntakeMigrationName
     )
   : "";
 const normalizedIntakeSql = conversationalIntakeMigration.replace(/\s+/g, " ");
+const intakeHardeningMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_conversational_intake.sql"));
+const intakeHardeningMigration = intakeHardeningMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        intakeHardeningMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
+const normalizedIntakeHardeningSql = intakeHardeningMigration.replace(
+  /\s+/g,
+  " ",
+);
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -252,6 +269,83 @@ describe("conversational intake security", () => {
       finalizationFunction!.indexOf("insert into public.status_updates"),
     ).toBeLessThan(
       finalizationFunction!.indexOf("delete from public.brief_drafts"),
+    );
+  });
+});
+
+describe("conversational intake review hardening", () => {
+  it("saves exactly one answer through an authenticated security-invoker RPC", () => {
+    expect(normalizedIntakeHardeningSql).toContain(
+      "create or replace function public.save_brief_answer(",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "security invoker set search_path = ''",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "revoke all on function public.save_brief_answer(uuid, text, jsonb, text) from public, anon;",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "grant execute on function public.save_brief_answer(uuid, text, jsonb, text) to authenticated;",
+    );
+    expect(normalizedIntakeHardeningSql).not.toContain(
+      "grant execute on function public.save_brief_answer(uuid, text, jsonb, text) to anon;",
+    );
+
+    const saveFunction = normalizedIntakeHardeningSql.match(
+      /create or replace function public\.save_brief_answer\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(saveFunction).toBeDefined();
+    expect(saveFunction).not.toContain("security definer");
+    expect(saveFunction).toContain("(select auth.uid())");
+    expect(saveFunction).toContain("payment_status = 'paid'");
+    expect(saveFunction).toContain("workflow_status = 'awaiting_brief'");
+    expect(saveFunction).toContain(
+      "brief_drafts.answers || pg_catalog.jsonb_build_object(",
+    );
+    expect(saveFunction).toContain("on conflict (engagement_id) do update");
+  });
+
+  it("removes every authenticated vehicle-brief write path", () => {
+    expect(normalizedIntakeHardeningSql).toContain(
+      "revoke insert, update on table public.vehicle_briefs from authenticated;",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      'drop policy if exists "Customers can create vehicle briefs for paid engagements" on public.vehicle_briefs;',
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      'drop policy if exists "Customers can update vehicle briefs for paid engagements" on public.vehicle_briefs;',
+    );
+    expect(normalizedIntakeHardeningSql).not.toContain(
+      "grant insert on table public.vehicle_briefs to authenticated;",
+    );
+  });
+
+  it("finalizes only the locked draft and accepts no separate brief payload", () => {
+    expect(normalizedIntakeHardeningSql).toContain(
+      "drop function public.finalize_vehicle_brief(uuid, uuid, jsonb);",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "create or replace function public.finalize_vehicle_brief( p_engagement_id uuid, p_user_id uuid )",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "revoke all on function public.finalize_vehicle_brief(uuid, uuid) from public, anon, authenticated;",
+    );
+    expect(normalizedIntakeHardeningSql).toContain(
+      "grant execute on function public.finalize_vehicle_brief(uuid, uuid) to service_role;",
+    );
+
+    const finalizationFunction = normalizedIntakeHardeningSql.match(
+      /create or replace function public\.finalize_vehicle_brief\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(finalizationFunction).toBeDefined();
+    expect(finalizationFunction).not.toContain("p_brief");
+    expect(finalizationFunction).toContain(
+      "into v_draft from public.brief_drafts",
+    );
+    expect(finalizationFunction).toContain("for update");
+    expect(finalizationFunction).toContain("v_draft.answers");
+    expect(finalizationFunction).toContain(
+      "insert into public.vehicle_briefs",
     );
   });
 });

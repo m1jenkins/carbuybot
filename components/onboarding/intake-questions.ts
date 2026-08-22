@@ -358,7 +358,10 @@ export function formatIntakeAnswer(
   value: unknown,
 ): string {
   if (value === null || (Array.isArray(value) && value.length === 0)) {
-    return "No preference";
+    return (
+      question.choices?.find((choice) => choice.value === NO_PREFERENCE)
+        ?.label ?? "No preference"
+    );
   }
   const choice = question.choices?.find(
     (item) =>
@@ -373,7 +376,8 @@ export function formatIntakeAnswer(
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(value / 100);
   }
   if (Array.isArray(value)) {
