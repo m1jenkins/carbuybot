@@ -21,23 +21,19 @@ import PreviewPortalPage from "./portal/page";
 const fixtureId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 
 describe("non-production review fixtures", () => {
-  const originalDemoMode = process.env.APP_DEMO_MODE;
-  const originalNodeEnv = process.env.NODE_ENV;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.APP_DEMO_MODE = "true";
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("APP_DEMO_MODE", "true");
+    vi.stubEnv("NODE_ENV", "test");
   });
 
   afterEach(() => {
     cleanup();
-    process.env.APP_DEMO_MODE = originalDemoMode;
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
   });
 
   it("404s every preview route in production even when demo mode is set", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
 
     const routes = [
       () => PreviewOnboardingPage(),
@@ -58,7 +54,7 @@ describe("non-production review fixtures", () => {
   });
 
   it("404s preview routes when the explicit local review flag is absent", async () => {
-    delete process.env.APP_DEMO_MODE;
+    vi.stubEnv("APP_DEMO_MODE", "");
 
     await expect(
       Promise.resolve().then(() => PreviewPortalPage()),
