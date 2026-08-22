@@ -166,6 +166,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 /* ── layout primitives ─────────────────────────────────────────────── */
 .wrap{max-width:var(--max);margin:0 auto;padding-inline:var(--gut)}
 .sec{padding-block:var(--sec)}
+.sec--tight{padding-block:clamp(46px,5vw,78px)}
 .dark{background:var(--ink-2);color:var(--on-dark)}
 .dark p{color:var(--on-dark-soft)}
 .rule-top{border-top:1px solid var(--rule)}
@@ -354,10 +355,9 @@ html:not(.js) .hero-demo .msg--close{box-shadow:inset 2px 0 0 var(--money-dark)}
 .rail span{display:block;margin-top:5px;font-size:13px;color:var(--on-dark-mute)}
 
 /* ── statement ─────────────────────────────────────────────────────── */
-.stmt{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:clamp(32px,6vw,96px)}
-.stmt__l{align-self:start;position:sticky;top:118px;display:grid;gap:20px}
-.stmt__r{font-size:clamp(16.5px,1.25vw,18px);line-height:1.62;color:var(--graphite);max-width:60ch}
-.stmt__r p+p{margin-top:1.15em}
+.stmt{display:grid;grid-template-columns:minmax(0,.6fr) minmax(0,1fr);gap:clamp(18px,4vw,64px);align-items:start}
+.stmt__l{display:grid;gap:12px}
+.stmt__r{font-size:15.5px;line-height:1.6;color:var(--graphite);max-width:62ch;text-wrap:pretty}
 .stmt__r strong{color:var(--ink);font-weight:500}
 
 /* ── steps (documentary photo blocks) ──────────────────────────────── */
@@ -528,7 +528,7 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
 @media(max-width:1000px){
   .hdr nav{display:none}
   .stmt,.ev,.price{grid-template-columns:1fr}
-  .stmt__l,.ev__rail{position:static}
+  .ev__rail{position:static}
   .offers{grid-template-columns:1fr}
   .offer--best{box-shadow:inset 3px 0 0 var(--ink)}
   .step{grid-template-columns:1fr;gap:26px}
@@ -719,35 +719,8 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
     </div>
   </div>
 
-  <!-- Statement -->
-  <section class="sec">
-    <div class="wrap stmt">
-      <div class="stmt__l rv">
-        <span class="label">Who we work for</span>
-        <h2 class="d2">One side of the table.</h2>
-      </div>
-      <div class="stmt__r rv" style="--d:90ms">
-        <p>
-          Almost everyone else in a car deal is paid by the dealership. The lead site that sold your email.
-          The finance office selling the warranty. Even the broker who takes a fee from you and a spiff
-          from them.
-        </p>
-        <p>
-          <strong>We are paid by you, once, and by nobody else.</strong> That one fact decides how the
-          service behaves: what your agent asks for, when it walks away, and why it will tell you a deal
-          is worse than the one you already have.
-        </p>
-        <p>
-          Your agent gives its name, says it is buying on your behalf, and says it is an AI. It never
-          pretends to be you. It negotiates over email, so you keep the paper trail. You review the
-          numbers and you sign them. We never take title to a car and we never touch your money.
-        </p>
-      </div>
-    </div>
-  </section>
-
   <!-- How it works -->
-  <section class="sec rule-top" id="how">
+  <section class="sec" id="how">
     <div class="wrap">
       <div class="head rv">
         <span class="label">How it works</span>
@@ -1073,6 +1046,24 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
           <p class="answer">We use your details to run your negotiation and nothing else. We don&rsquo;t sell
             them, and dealers see only what a purchase actually requires.</p>
         </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Statement -->
+  <section class="sec sec--tight rule-top">
+    <div class="wrap stmt">
+      <div class="stmt__l rv">
+        <span class="label">Who we work for</span>
+        <h2 class="d3">One side of the table.</h2>
+      </div>
+      <div class="stmt__r rv" style="--d:90ms">
+        <p>
+          Almost everyone else in a car deal is paid by the dealership &mdash; the lead site that sold your
+          email, the finance office selling the warranty, even the broker who takes a fee from you and a
+          spiff from them. <strong>We are paid by you, once, and by nobody else</strong>, which is why your
+          agent will tell you a deal is worse than the one you already have.
+        </p>
       </div>
     </div>
   </section>
