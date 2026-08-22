@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pay | CarBuyerBots</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EFF5F4;--surface:#FAFDFD;--ink:#090C0B;--muted:#4D5150;--line:#DCE4E2;
+  --accent:#1B6B64;--on:#FAFCFC;--r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:48px 20px}
+.card{max-width:440px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:36px 32px;box-shadow:0 10px 28px -14px rgba(9,12,11,.08)}
+h1{font-family:"Instrument Serif",Georgia,serif;font-size:32px;font-weight:400;margin:8px 0 10px}
+p{color:var(--muted);font-size:15px;line-height:1.55;margin-bottom:22px}
+label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);font:inherit;margin-bottom:14px}
+button{width:100%;margin-top:8px;padding:13px 18px;border:0;border-radius:var(--r);background:var(--accent);color:var(--on);font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}
+.status{min-height:20px;margin-top:14px;font-size:14px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)">After your brief is confirmed</p>
+    <h1>Pay the engagement fee</h1>
+    <p>You will be sent to Stripe Checkout. The first 100 customers pay $349; after that the fee is $399. If we do not save you more than the fee, we refund it.</p>
+    <form id="pay-form">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name">
+      <button type="submit">Continue to Stripe</button>
+    </form>
+    <p class="status" id="status" role="status"></p>
+    <p><a href="/">Back to CarBuyerBots</a></p>
+  </div>
+<script>
+const form=document.getElementById('pay-form');
+const statusEl=document.getElementById('status');
+form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const btn=form.querySelector('button');
+  btn.disabled=true;statusEl.textContent='Opening Checkout…';
+  try{
+    const res=await fetch('/api/checkout',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({email:form.email.value,name:form.name.value})
+    });
+    const data=await res.json();
+    if(!res.ok||!data.url)throw new Error(data.error||'Checkout failed');
+    window.location=data.url;
+  }catch(err){
+    statusEl.textContent=err.message||'Something went wrong.';
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>
