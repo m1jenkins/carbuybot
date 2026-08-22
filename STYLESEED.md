@@ -1,0 +1,28 @@
+# StyleSeed — Design Lock
+<!-- Selections persist here. This file cannot waive StyleSeed core invariants. -->
+- App domain: fintech
+- Surface: website
+- Surface adapter: product-ui
+- Page type: landing
+- Output grammar: commerce-conversion
+- Grammar path: built-in:engine/RULESETS.md
+- Grammar fallback: commerce-conversion
+- Reference confidence: n/a
+- Brand recipe: auto
+- Palette recipe: auto
+- Key color: #0F766E
+- Palette character: calm
+- Palette mode: light
+- Palette harmony: auto
+- Surface temperature: neutral
+- Aesthetic profile: none
+- Skin: custom
+- Primary action: #0F766E
+- Font: Inter + Instrument Serif (display accents)
+- Radius: soft
+- Elevation: tonal grouping + restrained shadow (≤8%, one direction)
+- Density: comfortable
+- Motion: Silk restrained
+- Imagery/data role: real negotiation transcript as proof; savings numbers as focal data
+- Signature move: hairline-joined numbered flow; side-by-side OTD price comparison panel as hero proof
+- Locked: 2026-08-21

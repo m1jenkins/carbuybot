@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "landing",
+  "target": { "kind": "document", "locator": "index.html" },
+  "selection": {
+    "grammar": "commerce-conversion",
+    "adapter": "product-ui",
+    "domain": "fintech",
+    "page": "landing",
+    "recipe": "commerce-operator",
+    "palette": "warm-clay-commerce",
+    "profile": "none",
+    "fallback": "commerce-conversion"
+  },
+  "decisions": {
+    "primaryDecision": "Commit to the $349 launch-cohort engagement with confidence that the agent saves more than its fee.",
+    "primaryAction": "Start my search — single primary CTA repeated at nav, hero, pricing, final form, and mobile bar.",
+    "signatureMove": "The real negotiation transcript sits in the hero as product proof, with the $2,517 price movement as the dominant number."
+  },
+  "implementation": {
+    "sourceRoots": ["index.html"],
+    "tokenFiles": [".styleseed/palette.css"]
+  },
+  "validation": {
+    "scoreFloor": 80,
+    "requiredRenders": [
+      { "id": "desktop-loaded", "state": "loaded", "viewport": { "width": 1440, "height": 900 } },
+      { "id": "mobile-loaded", "state": "loaded", "viewport": { "width": 390, "height": 844 } }
+    ],
+    "temporal": {
+      "required": true,
+      "scenarios": ["reduced-motion"]
+    },
+    "humanAcceptance": false
+  }
+}
