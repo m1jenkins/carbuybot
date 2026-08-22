@@ -203,7 +203,10 @@ ul,ol{margin:0;padding:0;list-style:none}
 .logrow__a{font-size:15.5px;line-height:1.45;color:var(--on-dark-soft)}
 .logrow__v{font-size:15.5px;line-height:1.45;color:var(--on-dark);white-space:nowrap}
 /* the entry where the deal closed carries the thread's teal spine */
-.logrow--close{border-bottom:0;box-shadow:inset 2px 0 0 var(--money-dark)}
+.logrow--close{border-bottom:0;position:relative}
+.logrow--close::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--money-dark);
+}
 .logrow--close .logrow__a{color:var(--on-dark)}
 .logrow--close .logrow__v{font-size:17px}
 .hero-log__foot{margin-top:16px;padding-left:var(--spine);max-width:48ch}
