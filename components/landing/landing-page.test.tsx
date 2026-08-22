@@ -25,6 +25,19 @@ describe("LandingPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("serves the portrait and landscape hero photographs from the dealer-lot media files", () => {
+    render(<LandingPage />);
+
+    const picture = document.querySelector(".hero picture");
+    expect(picture).toBeInstanceOf(HTMLElement);
+    expect(picture?.querySelector("source")?.getAttribute("srcSet")).toBe(
+      "/media/hero-wide.jpg",
+    );
+    expect(picture?.querySelector("img")?.getAttribute("src")).toBe(
+      "/media/hero.jpg",
+    );
+  });
+
   it("shows a timestamped agent worklog in the hero instead of a clipped email thread", () => {
     render(<LandingPage />);
 
