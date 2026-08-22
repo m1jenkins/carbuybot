@@ -278,70 +278,35 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero .lede{max-width:min(36ch,100%);margin-top:22px;color:rgba(242,241,238,.88);overflow-wrap:break-word}
 .hero-act{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;margin-top:32px}
 
-/* live email thread — the product artifact, on the photograph */
-.hero-demo{min-width:0;align-self:end}
-.hero-demo__head{padding-bottom:16px;border-bottom:1px solid var(--rule-dark)}
-.hero-demo__head .label{color:rgba(242,241,238,.84)}
-.hero-demo__head p{
+/* the agent's worklog — a dated record of one real search, on the photograph.
+   Rows are hairline-ruled and size to their own content. Nothing animates
+   height and nothing is masked, so no entry can ever be clipped or ghosted.
+   --spine is the gutter the closing entry's teal rule lives in; every part of
+   the log reserves it, so one text edge runs down the whole block while the
+   hairlines still span the full column. */
+.hero-log{--spine:19px;min-width:0;align-self:end}
+.hero-log__head{padding:0 0 15px var(--spine);border-bottom:1px solid var(--rule-dark)}
+.hero-log__head .label{color:rgba(242,241,238,.84)}
+.hero-log__head p{
   margin-top:10px;font-size:16px;line-height:1.35;color:rgba(242,241,238,.9);
   letter-spacing:-.012em;
 }
-.hero-demo__thread{
-  margin:0;display:flex;flex-direction:column;justify-content:flex-end;
-  max-height:min(26rem,48vh);overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 56px);
-  mask-image:linear-gradient(180deg,transparent 0,#000 56px);
+.hero-log__list{display:grid}
+.logrow{
+  display:grid;grid-template-columns:6.2rem minmax(0,1fr) auto;
+  align-items:baseline;column-gap:22px;
+  padding:13px 0 13px var(--spine);border-bottom:1px solid var(--rule-dark-2);
 }
-.hero-demo .msg{
-  display:grid;grid-template-rows:0fr;opacity:0;flex:none;
-  transform:translate3d(0,14px,0);
-  border-bottom:1px solid transparent;
-  transition:
-    opacity .58s var(--ease),
-    transform .58s var(--ease),
-    grid-template-rows .58s var(--ease),
-    border-color .58s var(--ease);
-}
-html:not(.js) .hero-demo .msg[data-beat]{
-  grid-template-rows:1fr;opacity:1;transform:none;border-bottom-color:var(--rule-dark-2);
-}
-html:not(.js) .hero-demo .msg[data-beat] .msg__pad{padding:16px 0}
-html:not(.js) .hero-demo .msg[data-compose]{display:none}
-html:not(.js) .hero-demo .msg--close{box-shadow:inset 2px 0 0 var(--money-dark)}
-.hero-demo .msg__clip{overflow:hidden;min-height:0}
-.hero-demo .msg__pad{padding:0;display:grid;gap:8px}
-.hero-demo .msg.is-in{
-  grid-template-rows:1fr;opacity:1;transform:none;
-  border-bottom-color:var(--rule-dark-2);
-}
-.hero-demo .msg.is-in .msg__pad{padding:16px 0}
-.hero-demo .msg p{font-size:16.5px;line-height:1.5;max-width:none;color:var(--on-dark-soft)}
-.hero-demo .msg--agent p{color:var(--on-dark)}
-.hero-demo .msg--close{
-  box-shadow:none;padding-left:0;
-  border-bottom-color:transparent;
-}
-.hero-demo .msg--close.is-in{
-  box-shadow:inset 2px 0 0 var(--money-dark);
-}
-.hero-demo .msg--close .msg__pad{padding-left:19px}
-.hero-demo .msg--close p{font-size:17px}
-.hero-demo .msg--close.is-in .money{
-  animation:moneyIn .7s var(--ease) both;
-  animation-delay:.12s;
-}
-.hero-demo .msg--compose .msg__pad{
-  display:flex;align-items:center;gap:12px;padding-block:13px;
-}
-.hero-demo .caret{
-  display:block;width:2px;height:15px;background:var(--on-dark);
-  animation:caret 1.05s steps(1) infinite;
-}
-@keyframes caret{50%{opacity:0}}
-@keyframes moneyIn{
-  from{opacity:.35;filter:blur(6px)}
-  to{opacity:1;filter:blur(0)}
-}
+.logrow__t{font-size:12.5px;line-height:1.5;color:var(--on-dark-mute);white-space:nowrap}
+.logrow__a{font-size:15.5px;line-height:1.45;color:var(--on-dark-soft)}
+.logrow__v{font-size:15.5px;line-height:1.45;color:var(--on-dark);white-space:nowrap}
+/* the entry where the deal closed carries the thread's teal spine */
+.logrow--close{border-bottom:0;box-shadow:inset 2px 0 0 var(--money-dark)}
+.logrow--close .logrow__a{color:var(--on-dark)}
+.logrow--close .logrow__v{font-size:17px}
+.hero-log__foot{margin-top:16px;padding-left:var(--spine);max-width:48ch}
+/* rows ride the page's own reveal, shortened — opacity and transform only */
+.hero-log .rv{transform:translateY(10px);transition-duration:.62s}
 
 .scroll-cue{display:none}
 
@@ -543,7 +508,6 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   }
   .hero .d1{max-width:none;font-size:clamp(32px,7.6vw,52px)}
   .hero .lede{max-width:none}
-  .hero-demo__thread{max-height:18.5rem}
 }
 @media(max-width:720px){
   .rail ul{grid-template-columns:1fr}
@@ -565,12 +529,12 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
     rgba(8,9,10,.55) 48%,
     rgba(8,9,10,.9) 74%,
     rgba(8,9,10,.96) 100%)}
-  .hero-demo .msg p{font-size:15.5px}
-  .hero-demo__thread{
-    max-height:18rem;
-    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 36px);
-    mask-image:linear-gradient(180deg,transparent 0,#000 36px);
-  }
+  /* portrait: the timestamp takes its own line so the entry never wraps twice */
+  .hero-log{--spine:15px}
+  .logrow{grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:2px;padding:11px 0 11px var(--spine)}
+  .logrow__t{grid-column:1/-1}
+  .logrow__a,.logrow__v{font-size:15px}
+  .logrow--close .logrow__v{font-size:16px}
   .form .btn{width:100%}
   .cmp-scroll{overflow:visible}
   table.cmp{min-width:0}
@@ -599,12 +563,6 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
   .rv{opacity:1;transform:none}
   .plate__media{transform:none!important}
-  .hero-demo .msg{opacity:1;transform:none;grid-template-rows:1fr;border-bottom-color:var(--rule-dark-2)}
-  .hero-demo .msg[data-compose]{display:none}
-  .hero-demo .msg__pad{padding:16px 0}
-  .hero-demo .msg--close{box-shadow:inset 2px 0 0 var(--money-dark)}
-  .hero-demo .msg--close .money{filter:none;animation:none}
-  .hero-demo__thread{max-height:none;-webkit-mask-image:none;mask-image:none}
 }
 </style>
 <script>document.documentElement.classList.add('js');</script>
@@ -661,49 +619,43 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
         </div>
       </div>
 
-      <aside class="hero-demo" id="hero-demo" aria-hidden="true">
-        <div class="hero-demo__head">
-          <span class="label">Your agent, emailing a dealer</span>
-          <p>Re: 2025 Genesis GV80 3.5T Prestige</p>
+      <aside class="hero-log" aria-labelledby="hero-log-h">
+        <div class="hero-log__head">
+          <h2 class="label" id="hero-log-h">What your agent did, on one real search</h2>
+          <p>2025 Genesis GV80 3.5T Prestige <span aria-hidden="true">&middot;</span> six dealers, about a day</p>
         </div>
-        <div class="hero-demo__thread">
-          <div class="msg msg--dealer" data-beat>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Dealer</span>
-              <p>I received your offer of $60,183 plus tax and title. I&rsquo;ll review it with my management team and see how close we can get.</p>
-            </div></div>
-          </div>
-          <div class="msg msg--compose" data-compose>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Your agent</span>
-              <span class="caret"></span>
-            </div></div>
-          </div>
-          <div class="msg msg--agent" data-beat>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Your agent</span>
-              <p>We&rsquo;ll look at $62,700. No deposit for now &mdash; send pricing on those four items. Also, can you arrange shipping to Dallas?</p>
-            </div></div>
-          </div>
-          <div class="msg msg--dealer" data-beat>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Dealer</span>
-              <p>If we can close at $62,700 today, my manager will throw in all four accessories at no charge. We&rsquo;ll cover transport to Dallas.</p>
-            </div></div>
-          </div>
-          <div class="msg msg--compose" data-compose>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Your agent</span>
-              <span class="caret"></span>
-            </div></div>
-          </div>
-          <div class="msg msg--agent msg--close" data-beat>
-            <div class="msg__clip"><div class="msg__pad">
-              <span class="who">Your agent</span>
-              <p>Signed at <span class="num money">$62,700</span> out the door, with $1,380 of accessories included. Mike never walked into the store.</p>
-            </div></div>
-          </div>
-        </div>
+        <ol class="hero-log__list">
+          <li class="logrow rv">
+            <span class="logrow__t num">Thu 9:02 am</span>
+            <span class="logrow__a">Sent one opening offer to all six dealers</span>
+            <span class="logrow__v num">$60,183</span>
+          </li>
+          <li class="logrow rv" style="--d:80ms">
+            <span class="logrow__t num">Thu 1:47 pm</span>
+            <span class="logrow__a">Asked the four who replied what each trim includes</span>
+          </li>
+          <li class="logrow rv" style="--d:160ms">
+            <span class="logrow__t num">Thu 6:20 pm</span>
+            <span class="logrow__a">Dropped the two dealers with no matching car</span>
+          </li>
+          <li class="logrow rv" style="--d:240ms">
+            <span class="logrow__t num">Thu 11:26 pm</span>
+            <span class="logrow__a">Answered a counter at night, and declined the deposit</span>
+            <span class="logrow__v num">$62,700</span>
+          </li>
+          <li class="logrow rv" style="--d:320ms">
+            <span class="logrow__t num">Fri 8:04 am</span>
+            <span class="logrow__a">Had four accessories added at no charge</span>
+            <span class="logrow__v num">$1,380</span>
+          </li>
+          <li class="logrow logrow--close rv" style="--d:400ms">
+            <span class="logrow__t num">Fri 2:31 pm</span>
+            <span class="logrow__a">Sent Mike the final numbers to approve</span>
+            <span class="logrow__v num money">$62,700</span>
+          </li>
+        </ol>
+        <p class="cap hero-log__foot">One real search, August 2026. Mike approved the last line himself,
+          and never walked into the store.</p>
       </aside>
     </div>
   </section>
@@ -1183,66 +1135,6 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   frame();
 
   document.getElementById('year').textContent = new Date().getFullYear();
-
-  /* Hero email thread: one authored sequence. Pauses offscreen / when hidden.
-     Reduced-motion visitors get the closed thread immediately — no composing caret. */
-  (function(){
-    var root = document.getElementById('hero-demo');
-    if (!root) return;
-    var beats = root.querySelectorAll('[data-beat]');
-    var composes = root.querySelectorAll('[data-compose]');
-    var timers = [];
-    var started = false;
-
-    function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
-    function clear(){
-      for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
-      timers = [];
-    }
-    function wipe(){
-      clear();
-      started = false;
-      for (var i = 0; i < beats.length; i++) beats[i].classList.remove('is-in');
-      for (var j = 0; j < composes.length; j++) composes[j].classList.remove('is-in');
-    }
-    function showAll(){
-      clear();
-      for (var i = 0; i < beats.length; i++) beats[i].classList.add('is-in');
-      for (var j = 0; j < composes.length; j++) composes[j].classList.remove('is-in');
-    }
-    function play(){
-      if (reduce){ showAll(); return; }
-      if (started) return;
-      wipe();
-      started = true;
-      later(function(){ beats[0].classList.add('is-in'); }, 320);
-      later(function(){ composes[0].classList.add('is-in'); }, 1480);
-      later(function(){
-        composes[0].classList.remove('is-in');
-        beats[1].classList.add('is-in');
-      }, 2480);
-      later(function(){ beats[2].classList.add('is-in'); }, 4300);
-      later(function(){ composes[1].classList.add('is-in'); }, 5750);
-      later(function(){
-        composes[1].classList.remove('is-in');
-        beats[3].classList.add('is-in');
-      }, 6700);
-    }
-
-    if (reduce){ showAll(); return; }
-
-    var onStage = false;
-    new IntersectionObserver(function(entries){
-      onStage = entries[0].isIntersecting;
-      if (onStage) play();
-      else wipe();
-    }, {threshold:.28}).observe(root);
-
-    document.addEventListener('visibilitychange', function(){
-      if (document.hidden){ clear(); return; }
-      if (onStage){ started = false; play(); }
-    });
-  })();
 
   /* Lead capture */
   var KEY = '84a08327-ee5b-4ad2-a232-2f07662727c8';
