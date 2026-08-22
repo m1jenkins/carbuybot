@@ -87,7 +87,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 }
 .dark .label,.plate .label{color:var(--on-dark-mute)}
 .cap{font-size:13px;line-height:1.55;color:var(--meta)}
-.dark .cap{color:var(--on-dark-mute)}
+.dark .cap,.plate .cap{color:var(--on-dark-mute)}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .money{color:var(--money)}
 .dark .money,.plate .money{color:var(--money-dark)}

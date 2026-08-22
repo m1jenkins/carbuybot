@@ -44,9 +44,10 @@ admin review. Design-system source lives in `.styleseed/` and
   When walking the marketing page, fill the email field only if you intend to
   start checkout. Prefer `APP_DEMO_MODE=true` and the `/preview/*` routes for
   UI review.
-- Hero worklog rows, deal-sheet row reveals, and scroll plates are
-  `IntersectionObserver`-driven and pause offscreen or under
-  `prefers-reduced-motion`. If motion looks static, that is expected.
+- Hero worklog rows, deal-sheet row reveals, and scroll plates use
+  `IntersectionObserver`. Reveals stay on after they enter view; plates
+  pause offscreen or under `prefers-reduced-motion`. If motion looks
+  static, that is expected.
 - Do not enable Stripe Tax, live keys, subscriptions, saved cards, or Connect.
   Phase 1 Checkout is hosted `mode: "payment"` only. Off-session invoicing is
   documented in `docs/stripe-integration-plan.md` and is not wired.

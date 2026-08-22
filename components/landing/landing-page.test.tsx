@@ -68,7 +68,10 @@ describe("LandingPage", () => {
     expect(css).not.toMatch(/\.hero-demo/);
     expect(css).toMatch(/\.rv\{[^}]*translateY\(var\(--rise,24px\)\)/);
     expect(css).toMatch(/html:not\(\.js\) \.rv\{opacity:1;transform:none\}/);
-    expect(css).toMatch(/\.logrow--fold\{display:none\}/);
+    expect(css).toMatch(/\.dark \.cap,\s*\.plate \.cap\{color:var\(--on-dark-mute\)\}/);
+    expect(css).toMatch(
+      /@media\(max-width:720px\)[\s\S]*\.logrow--fold\{display:none\}/,
+    );
     expect(css).not.toMatch(/\.hero-log[^{]*\{[^}]*max-height/);
     expect(css).not.toMatch(/\.hero-log[^{]*mask-image/);
   });
