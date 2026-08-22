@@ -305,8 +305,8 @@ ul,ol{margin:0;padding:0;list-style:none}
 .logrow--close .logrow__a{color:var(--on-dark)}
 .logrow--close .logrow__v{font-size:17px}
 .hero-log__foot{margin-top:16px;padding-left:var(--spine);max-width:48ch}
-/* rows ride the page's own reveal, shortened — opacity and transform only */
-.hero-log .rv{transform:translateY(10px);transition-duration:.62s}
+/* rows ride the page's own reveal, over a shorter rise and a quicker beat */
+.hero-log .rv{--rise:10px;transition-duration:.62s}
 
 .scroll-cue{display:none}
 
@@ -486,8 +486,10 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
 .mcta .btn{height:44px;padding:0 20px;font-size:14px}
 
 /* ── reveal ────────────────────────────────────────────────────────── */
-.rv{opacity:0;transform:translateY(24px);transition:opacity .95s var(--ease),transform .95s var(--ease);transition-delay:var(--d,0ms)}
+.rv{opacity:0;transform:translateY(var(--rise,24px));transition:opacity .95s var(--ease),transform .95s var(--ease);transition-delay:var(--d,0ms)}
 .rv.in{opacity:1;transform:none}
+/* the reveal is JS-driven, so without it the page must start already revealed */
+html:not(.js) .rv{opacity:1;transform:none}
 
 /* ── responsive ────────────────────────────────────────────────────── */
 @media(max-width:1000px){
@@ -529,12 +531,18 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
     rgba(8,9,10,.55) 48%,
     rgba(8,9,10,.9) 74%,
     rgba(8,9,10,.96) 100%)}
-  /* portrait: the timestamp takes its own line so the entry never wraps twice */
+  /* portrait: the timestamp takes its own line, since an entry would otherwise
+     wrap twice. The log folds to the three entries that carry the whole arc —
+     six dealers at once, a counter answered at night, and Mike approving the
+     last number — so the hero still lands inside one screen. */
   .hero-log{--spine:15px}
-  .logrow{grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:2px;padding:11px 0 11px var(--spine)}
+  .hero-log__head{padding-bottom:12px}
+  .logrow{grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:2px;padding:10px 0 10px var(--spine)}
   .logrow__t{grid-column:1/-1}
   .logrow__a,.logrow__v{font-size:15px}
   .logrow--close .logrow__v{font-size:16px}
+  .logrow--fold{display:none}
+  .hero-log__foot{margin-top:13px}
   .form .btn{width:100%}
   .cmp-scroll{overflow:visible}
   table.cmp{min-width:0}
@@ -630,11 +638,11 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
             <span class="logrow__a">Sent one opening offer to all six dealers</span>
             <span class="logrow__v num">$60,183</span>
           </li>
-          <li class="logrow rv" style="--d:80ms">
+          <li class="logrow logrow--fold rv" style="--d:80ms">
             <span class="logrow__t num">Thu 1:47 pm</span>
             <span class="logrow__a">Asked the four who replied what each trim includes</span>
           </li>
-          <li class="logrow rv" style="--d:160ms">
+          <li class="logrow logrow--fold rv" style="--d:160ms">
             <span class="logrow__t num">Thu 6:20 pm</span>
             <span class="logrow__a">Dropped the two dealers with no matching car</span>
           </li>
@@ -643,7 +651,7 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
             <span class="logrow__a">Answered a counter at night, and declined the deposit</span>
             <span class="logrow__v num">$62,700</span>
           </li>
-          <li class="logrow rv" style="--d:320ms">
+          <li class="logrow logrow--fold rv" style="--d:320ms">
             <span class="logrow__t num">Fri 8:04 am</span>
             <span class="logrow__a">Had four accessories added at no charge</span>
             <span class="logrow__v num">$1,380</span>
