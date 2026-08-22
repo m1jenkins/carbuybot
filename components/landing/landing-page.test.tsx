@@ -25,6 +25,57 @@ describe("LandingPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows a timestamped agent worklog in the hero instead of a clipped email thread", () => {
+    render(<LandingPage />);
+
+    const logHeading = screen.getByRole("heading", {
+      name: /what your agent did, on one real search/i,
+    });
+    const log = logHeading.closest("aside");
+    expect(log).toBeInstanceOf(HTMLElement);
+    if (!(log instanceof HTMLElement)) {
+      throw new Error("Expected hero worklog aside");
+    }
+
+    expect(log).not.toHaveAttribute("aria-hidden", "true");
+    expect(log.querySelectorAll(".logrow")).toHaveLength(6);
+    expect(log.querySelectorAll(".logrow--fold")).toHaveLength(3);
+    expect(log.querySelector(".logrow--close .money")?.textContent).toMatch(
+      /\$62,700/,
+    );
+    expect(screen.getByText("Thu 9:02 am")).toBeInTheDocument();
+    expect(screen.getByText("Thu 11:26 pm")).toBeInTheDocument();
+    expect(
+      screen.getByText(/sent one opening offer to all six dealers/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/sent mike the final numbers to approve/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/your agent, emailing a dealer/i),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector(".hero-demo")).toBeNull();
+    expect(document.querySelector(".caret")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /read a real negotiation/i }),
+    ).toHaveAttribute("href", "#negotiation");
+  });
+
+  it("keeps hero worklog rows unmasked and reveal-safe in landing CSS", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+
+    expect(css).toMatch(/\.hero-log\{/);
+    expect(css).not.toMatch(/\.hero-demo/);
+    expect(css).toMatch(/\.rv\{[^}]*translateY\(var\(--rise,24px\)\)/);
+    expect(css).toMatch(/html:not\(\.js\) \.rv\{opacity:1;transform:none\}/);
+    expect(css).toMatch(/\.dark \.cap,\s*\.plate \.cap\{color:var\(--on-dark-mute\)\}/);
+    expect(css).toMatch(
+      /@media\(max-width:720px\)[\s\S]*\.logrow--fold\{display:none\}/,
+    );
+    expect(css).not.toMatch(/\.hero-log[^{]*\{[^}]*max-height/);
+    expect(css).not.toMatch(/\.hero-log[^{]*mask-image/);
+  });
+
   it("keeps Who we work for as a condensed note between FAQ and the closing CTA", () => {
     render(<LandingPage />);
 
