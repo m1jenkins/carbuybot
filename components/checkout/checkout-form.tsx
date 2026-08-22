@@ -1,6 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
+
+import {
+  isStripeCheckoutUrl,
+  navigateToCheckout,
+} from "./checkout-navigation";
 
 type CheckoutFormProps = {
   defaultEmail?: string;
@@ -10,15 +16,6 @@ type CheckoutResponse = {
   error?: string;
   url?: string;
 };
-
-function isStripeCheckoutUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname === "checkout.stripe.com";
-  } catch {
-    return false;
-  }
-}
 
 export function CheckoutForm({ defaultEmail = "" }: CheckoutFormProps) {
   const [email, setEmail] = useState(defaultEmail);
@@ -45,7 +42,7 @@ export function CheckoutForm({ defaultEmail = "" }: CheckoutFormProps) {
         throw new Error("Checkout returned an invalid destination.");
       }
 
-      window.location.assign(result.url);
+      navigateToCheckout(result.url);
     } catch (caught) {
       setError(
         caught instanceof Error
