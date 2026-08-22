@@ -536,6 +536,29 @@ describe("setup and durable guidance", () => {
     expect(read("README.md")).toContain("Node.js 22.14 or newer (below 23)");
   });
 
+  it("forces Vercel to build Next.js instead of publishing public/ as a static site", () => {
+    expect(existsSync(join(root, "vercel.json"))).toBe(true);
+
+    const config = JSON.parse(read("vercel.json")) as {
+      framework?: string | null;
+      buildCommand?: string | null;
+      outputDirectory?: string | null;
+    };
+
+    expect(config.framework).toBe("nextjs");
+    expect(config.buildCommand).toBe("next build");
+    expect(config.outputDirectory).toBeUndefined();
+  });
+
+  it("documents leftover static-era Vercel dashboard overrides Mason must clear", () => {
+    const setup = read("docs/setup-phase-1-portal.md");
+
+    expect(setup).toContain("m1jenkins-projects/carbuybot");
+    expect(setup).toContain("Framework Preset");
+    expect(setup).toContain("Output Directory");
+    expect(setup).toMatch(/turn Override \*\*off\*\*/i);
+  });
+
   it("states the explicit Phase 1 exclusions and local-only demo contract", () => {
     const docs = documentation();
     const design = read("docs/design-language.md");

@@ -335,6 +335,39 @@ only, not a seed-data system, staging authentication bypass, or QA account.
 
 ## 7. Deployment checklist
 
+### Vercel project (`m1jenkins-projects/carbuybot`)
+
+This repository is a Next.js App Router app. The production host
+`https://carbuybot.vercel.app` 404s if Vercel still treats the project as the
+old static landing page: it publishes the `public/` folder (logo, robots,
+images) and has no `index.html`, so `/` is a platform `NOT_FOUND`.
+
+`vercel.json` forces Framework Preset `nextjs` and Build Command `next build`.
+It does not set Output Directory. If a leftover dashboard override still wins,
+Mason must:
+
+1. Open [Project Settings → General](https://vercel.com/m1jenkins-projects/carbuybot/settings/general).
+2. Under **Build & Development Settings**:
+   - **Framework Preset:** Next.js. If Override is on and set to Other, turn
+     Override off or set it to Next.js.
+   - **Build Command:** leave the Next.js default (`next build`) or turn
+     Override off. Do not leave it empty or a no-op.
+   - **Output Directory:** turn Override **off**. Do not set `public`, `.`,
+     or `out`. Next.js owns this path.
+   - **Install Command:** `npm ci` or the Next.js default. Do not skip
+     install.
+   - **Root Directory:** repository root (empty / `.`).
+3. Disable any **Ignored Build Step** that skips the Next.js build.
+4. Set **Node.js Version** to 22.x so it matches `package.json` `engines`.
+5. Redeploy the latest production deployment. Uncheck **Use existing Build
+   Cache** if the previous Ready deploy only uploaded `public/`.
+
+Do not invent or commit a Vercel token. Keep environment values in the Vercel
+project, not git. After a correct Next.js deploy, `/` is the landing page
+HTML, not the platform 404 body, and `/_next/static` exists.
+
+- [ ] Vercel Framework Preset is Next.js, Output Directory override is off,
+      and a fresh production deploy ran `next build`.
 - [ ] `npm test`, lint, typecheck, build, dependency-tree, and diff checks pass.
 - [ ] A separate hosted Supabase project exists and all migrations were
       reviewed, dry-run, applied, and listed in migration history.
