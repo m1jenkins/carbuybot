@@ -285,7 +285,7 @@ describe("PortalPage", () => {
   it("does not replace a requested processing engagement with an older visible engagement", async () => {
     const pendingEngagementId = "00000000-0000-4000-8000-999999999999";
 
-    render(
+    const { unmount } = render(
       await PortalPage({
         searchParams: Promise.resolve({
           engagement: pendingEngagementId,
@@ -306,6 +306,36 @@ describe("PortalPage", () => {
     expect(mocks.briefQuery.eq).not.toHaveBeenCalled();
     expect(mocks.updatesQuery.eq).not.toHaveBeenCalled();
     expect(screen.queryByText(pendingEngagementId)).not.toBeInTheDocument();
+
+    unmount();
+    mocks.engagementQuery.then.mockImplementationOnce(
+      (onFulfilled, onRejected) =>
+        Promise.resolve({
+          data: [
+            refundedEngagement,
+            completedEngagement,
+            engagement,
+            {
+              ...engagement,
+              created_at: "2026-08-24T12:00:00.000Z",
+              id: pendingEngagementId,
+            },
+          ],
+          error: null,
+        }).then(onFulfilled, onRejected),
+    );
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: pendingEngagementId,
+          payment: "processing",
+        }),
+      }),
+    );
+    expect(mocks.briefQuery.eq).toHaveBeenCalledWith(
+      "engagement_id",
+      pendingEngagementId,
+    );
   });
 
   it("shows no record details for malformed processing engagement context", async () => {
