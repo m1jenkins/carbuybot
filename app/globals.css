@@ -878,16 +878,18 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .step{grid-template-columns:1fr;gap:26px}
   .step--flip .step__fig{order:0}
   .step__fig{aspect-ratio:16/10}
-}
-@media(max-width:900px){
+  /* the hero collapses with every other two-column layout: below this the copy column
+     is too narrow to carry the headline beside the thread */
   .hero{min-height:100svh}
   .hero .plate__body{
     grid-template-columns:minmax(0,1fr);gap:28px;align-content:end;
-    min-height:100svh;padding-block:100px 32px;
+    min-height:100svh;padding-block:100px 40px;
   }
-  .hero .d1{max-width:none;font-size:clamp(32px,7.6vw,52px)}
-  .hero .lede{max-width:none}
-  .hero-demo__thread{max-height:18.5rem}
+  .hero .d1{max-width:min(18ch,100%);font-size:clamp(32px,7.6vw,52px)}
+  .hero .lede{max-width:min(42ch,100%)}
+  /* stacked under the copy the thread is unreadable and crowds the plate out of the
+     hero — the real transcript is one section down, where the CTA already points */
+  .hero-demo{display:none}
 }
 @media(max-width:720px){
   .review-fixture-note{display:grid;gap:3px;text-align:left}
@@ -952,24 +954,22 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .hdr .wrap{gap:12px}
   .mark{font-size:14px;gap:8px}
   .hdr .btn{padding:0 14px;font-size:13px;height:38px;flex:none}
-  .hero .d1{font-size:clamp(30px,8vw,42px);margin-top:14px}
+  /* two lines of tracked caps land straight on the headlights here and push the
+     headline off the plate — the trust rail one screen down states the same offer */
+  .hero .hero-copy>.label{display:none}
+  .hero .d1{font-size:clamp(30px,8vw,42px);margin-top:0}
   .hero .d1 span{display:inline}
   .hero .lede{margin-top:16px;font-size:16px}
-  .hero-act{margin-top:22px}
-  /* portrait: keep the headlights clear; type and the thread sit in the lower wash */
+  .hero-act{margin-top:26px}
+  /* portrait: the copy block starts lower now, so the wash can ease off the
+     headlights and let the car read instead of protecting a thread that is gone */
   .hero .plate__scrim{background:linear-gradient(180deg,
     rgba(8,9,10,.34) 0%,
-    rgba(8,9,10,.04) 12%,
-    rgba(8,9,10,.08) 28%,
-    rgba(8,9,10,.55) 48%,
-    rgba(8,9,10,.9) 74%,
-    rgba(8,9,10,.96) 100%)}
-  .hero-demo .msg p{font-size:15.5px}
-  .hero-demo__thread{
-    max-height:18rem;
-    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 36px);
-    mask-image:linear-gradient(180deg,transparent 0,#000 36px);
-  }
+    rgba(8,9,10,.04) 14%,
+    rgba(8,9,10,.06) 34%,
+    rgba(8,9,10,.42) 52%,
+    rgba(8,9,10,.86) 72%,
+    rgba(8,9,10,.95) 100%)}
   .form .btn{width:100%}
   .grid th,.grid td{padding:11px 10px;font-size:13px}
   .grid .c-note{font-size:12.5px}
@@ -998,6 +998,15 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   table.cmp td.us{background:var(--paper-2);padding:10px 12px;margin:4px -12px;border-left:2px solid var(--ink)}
   table.cmp td.us::before{color:var(--ink)}
   table.cmp .cost{font-size:15.5px}
+}
+/* landscape phones have no vertical room for a full-height plate: sizing the hero to
+   its copy keeps the actions above the fold instead of pushing them past it */
+@media(max-width:1000px) and (max-height:560px){
+  .hero,.hero .plate__body{min-height:0}
+  .hero .plate__body{padding-block:86px 34px}
+  .hero .d1{font-size:clamp(28px,6vw,38px)}
+  .hero .lede{margin-top:14px}
+  .hero-act{margin-top:22px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
