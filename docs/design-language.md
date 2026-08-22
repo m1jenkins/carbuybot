@@ -78,9 +78,10 @@ The hero is art-directed per breakpoint: a portrait crop for phones and a landsc
 720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
 actually used.
 
-Photography rules: documentary, no faces, and **no manufacturer logos** — see
-`media/CREDITS.md` for why and for the credit list. Later plates are cool-dark with warm
-counterpoints; the hero is daylight, an open aisle down a lot with the rows facing in.
+Photography rules: documentary, no faces, and **no frame a single maker owns** — badges on
+parked cars are fine, a showroom under its own pylon sign is not. See `media/CREDITS.md` for
+the credit list. Later plates are cool-dark with warm counterpoints; the hero is daylight, an
+open aisle down a lot with the rows facing in.
 
 A bright hero costs more scrim than a dark one, not less, because white type has to hold over
 lit paintwork. The composition does most of that work: the aisle gives the headline and the
@@ -180,5 +181,5 @@ gradients, novelty copy, and decorative navigation.
 - Serif type, or display type above weight 500
 - Teal on anything that is not money
 - Feature-icon grids, plan cards, floating product screenshots, hero UI mockups
-- Manufacturer logos in photography
+- Photography a single manufacturer owns — its showroom, facade, signage or an all-one-marque row
 - Unlabeled illustrative figures
