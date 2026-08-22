@@ -44,7 +44,7 @@ admin review. Design-system source lives in `.styleseed/` and
   When walking the marketing page, fill the email field only if you intend to
   start checkout. Prefer `APP_DEMO_MODE=true` and the `/preview/*` routes for
   UI review.
-- Hero thread animation, deal-sheet row reveals, and scroll plates are
+- Hero worklog rows, deal-sheet row reveals, and scroll plates are
   `IntersectionObserver`-driven and pause offscreen or under
   `prefers-reduced-motion`. If motion looks static, that is expected.
 - Do not enable Stripe Tax, live keys, subscriptions, saved cards, or Connect.

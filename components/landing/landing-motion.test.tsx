@@ -53,24 +53,10 @@ describe("LandingMotion", () => {
         <div id="mcta" />
         <section id="start" />
         <div className="rv" data-testid="reveal" />
-        <div id="hero-demo">
-          <div data-beat />
-          <div data-beat />
-          <div data-beat />
-          <div data-beat />
-          <div data-compose />
-          <div data-compose />
-        </div>
       </>,
     );
 
     expect(screen.getByTestId("reveal")).toHaveClass("in");
-    document
-      .querySelectorAll("[data-beat]")
-      .forEach((element) => expect(element).toHaveClass("is-in"));
-    document
-      .querySelectorAll("[data-compose]")
-      .forEach((element) => expect(element).not.toHaveClass("is-in"));
     expect(screen.getByTestId("plate")).toHaveStyle({
       transform: "translateY(0px)",
     });
