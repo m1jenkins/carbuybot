@@ -25,6 +25,46 @@ describe("LandingPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("keeps Who we work for as a condensed note between FAQ and the closing CTA", () => {
+    render(<LandingPage />);
+
+    const statementHeading = screen.getByRole("heading", {
+      name: /one side of the table/i,
+    });
+    const faq = document.getElementById("faq");
+    const start = document.getElementById("start");
+    expect(faq).toBeInstanceOf(HTMLElement);
+    expect(start).toBeInstanceOf(HTMLElement);
+    if (!(faq instanceof HTMLElement) || !(start instanceof HTMLElement)) {
+      throw new Error("Expected FAQ and closing CTA sections");
+    }
+
+    const statement = statementHeading.closest("section");
+    expect(statement).toBeInstanceOf(HTMLElement);
+    if (!(statement instanceof HTMLElement)) {
+      throw new Error("Expected Who we work for section");
+    }
+
+    expect(
+      faq.compareDocumentPosition(statement) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      statement.compareDocumentPosition(start) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(statement.className).toMatch(/\bsec--tight\b/);
+    expect(statement.className).toMatch(/\brule-top\b/);
+    expect(statementHeading.className).toMatch(/\bd3\b/);
+    expect(
+      screen.getByText(/we are paid by you, once, and by nobody else/i),
+    ).toBeInTheDocument();
+    expect(statement.querySelectorAll("p")).toHaveLength(1);
+    expect(statement.textContent).not.toMatch(
+      /Your agent gives its name, says it is buying on your behalf/,
+    );
+    expect(document.getElementById("how")?.className).not.toMatch(/\brule-top\b/);
+  });
+
   it("shows the compiled deal sheet between the offer cards and the comparison", () => {
     render(<LandingPage />);
 
