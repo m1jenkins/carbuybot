@@ -1,6 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 type SignInPageProps = {
   searchParams: Promise<{

@@ -1,4 +1,5 @@
 import { AdminOverview } from "@/components/admin/admin-overview";
+import { redirect } from "next/navigation";
 import type {
   AdminQueueEngagement,
   AdminVehicleSummary,
@@ -12,7 +13,10 @@ import {
   hasSupabaseConfiguration,
   requireAdmin,
 } from "@/lib/auth/admin";
-import { parseAdminQueueSearchParams } from "@/lib/domain/admin-query";
+import {
+  adminQueueHref,
+  parseAdminQueueSearchParams,
+} from "@/lib/domain/admin-query";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -113,6 +117,10 @@ export default async function AdminPage({
     1,
     Math.ceil(pageResult.count / ADMIN_QUEUE_PAGE_SIZE),
   );
+  if (query.page > pageCount) {
+    redirect(adminQueueHref(query, pageCount));
+  }
+
   return (
     <AdminOverview
       counts={countsResult.counts}

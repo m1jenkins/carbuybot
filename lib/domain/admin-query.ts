@@ -28,6 +28,19 @@ export type AdminQueueQuery = {
   status: "all" | WorkflowStatus;
 };
 
+export function adminQueueHref(
+  query: AdminQueueQuery,
+  page: number,
+): string {
+  const params = new URLSearchParams();
+  if (query.status !== "all") params.set("status", query.status);
+  if (query.payment !== "all") params.set("payment", query.payment);
+  if (query.search) params.set("q", query.search);
+  if (query.sort !== "newest") params.set("sort", query.sort);
+  params.set("page", String(page));
+  return `/admin?${params.toString()}`;
+}
+
 function scalar(value: string | string[] | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
 }

@@ -22,6 +22,7 @@ type PortalShellProps = {
   brief: PortalBrief | null;
   engagement: PortalEngagement;
   engagements: readonly PortalEngagement[];
+  reviewMode?: boolean;
   signOutAction?: () => void | Promise<void>;
   updates: readonly PortalStatusUpdate[];
 };
@@ -140,6 +141,7 @@ export function PortalShell({
   brief,
   engagement,
   engagements,
+  reviewMode = false,
   signOutAction,
   updates,
 }: PortalShellProps) {
@@ -163,7 +165,16 @@ export function PortalShell({
             CarBuyerBots
           </Link>
           <form action={signOutAction}>
-            <button className="portal-signout" type="submit">
+            <button
+              className="portal-signout"
+              type="submit"
+              disabled={reviewMode}
+              title={
+                reviewMode
+                  ? "Sign out is unavailable in the local review fixture"
+                  : undefined
+              }
+            >
               Sign out
             </button>
           </form>
@@ -180,7 +191,9 @@ export function PortalShell({
             {engagements.map((item) => (
               <li key={item.id}>
                 <Link
-                  href={`/portal?engagement=${item.id}`}
+                  href={`${
+                    reviewMode ? "/preview/portal" : "/portal"
+                  }?engagement=${item.id}`}
                   aria-current={item.id === engagement.id ? "page" : undefined}
                 >
                   <span>{engagementCopy(item).label}</span>

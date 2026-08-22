@@ -2,7 +2,10 @@ import Link from "next/link";
 
 import { ADMIN_QUEUE_PAGE_SIZE } from "@/lib/admin/engagement-queries";
 import { workflowLabels } from "@/lib/domain/admin-engagement";
-import type { AdminQueueQuery } from "@/lib/domain/admin-query";
+import {
+  adminQueueHref,
+  type AdminQueueQuery,
+} from "@/lib/domain/admin-query";
 import { workflowStatuses } from "@/lib/domain/engagement";
 
 import type { AdminQueueEngagement } from "./types";
@@ -12,6 +15,7 @@ type EngagementTableProps = {
   filteredCount: number;
   now?: string;
   pageCount: number;
+  reviewMode?: boolean;
   query: AdminQueueQuery;
 };
 
@@ -65,21 +69,12 @@ function formatAge(createdAt: string, now: string): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function queuePageHref(query: AdminQueueQuery, page: number): string {
-  const params = new URLSearchParams();
-  if (query.status !== "all") params.set("status", query.status);
-  if (query.payment !== "all") params.set("payment", query.payment);
-  if (query.search) params.set("q", query.search);
-  if (query.sort !== "newest") params.set("sort", query.sort);
-  params.set("page", String(page));
-  return `/admin?${params.toString()}`;
-}
-
 export function EngagementTable({
   engagements,
   filteredCount,
   now = new Date().toISOString(),
   pageCount,
+  reviewMode = false,
   query,
 }: EngagementTableProps) {
   const firstVisible =
@@ -101,7 +96,11 @@ export function EngagementTable({
         </p>
       </div>
 
-      <form className="admin-controls" action="/admin" method="get">
+      <form
+        className="admin-controls"
+        action={reviewMode ? "/preview/admin" : "/admin"}
+        method="get"
+      >
         <label>
           <span>Search engagements</span>
           <input
@@ -173,7 +172,9 @@ export function EngagementTable({
                 <td data-label="Vehicle">
                   <Link
                     className="admin-vehicle-link"
-                    href={`/admin/engagements/${engagement.id}`}
+                    href={`${
+                      reviewMode ? "/preview/admin" : "/admin"
+                    }/engagements/${engagement.id}`}
                   >
                     {vehicleLabel(engagement)}
                   </Link>
@@ -225,7 +226,16 @@ export function EngagementTable({
       {pageCount > 1 ? (
         <nav className="admin-pagination" aria-label="Queue pages">
           {query.page > 1 ? (
-            <Link href={queuePageHref(query, query.page - 1)}>
+            <Link
+              href={
+                reviewMode
+                  ? adminQueueHref(query, query.page - 1).replace(
+                      "/admin?",
+                      "/preview/admin?",
+                    )
+                  : adminQueueHref(query, query.page - 1)
+              }
+            >
               Previous page
             </Link>
           ) : (
@@ -236,7 +246,18 @@ export function EngagementTable({
             {pageCount.toLocaleString("en-US")}
           </span>
           {query.page < pageCount ? (
-            <Link href={queuePageHref(query, query.page + 1)}>Next page</Link>
+            <Link
+              href={
+                reviewMode
+                  ? adminQueueHref(query, query.page + 1).replace(
+                      "/admin?",
+                      "/preview/admin?",
+                    )
+                  : adminQueueHref(query, query.page + 1)
+              }
+            >
+              Next page
+            </Link>
           ) : (
             <span aria-disabled="true">Next page</span>
           )}

@@ -12,6 +12,7 @@ type AdminOverviewProps = {
   filteredCount: number;
   pageCount: number;
   query: AdminQueueQuery;
+  reviewMode?: boolean;
 };
 
 export function AdminOverview({
@@ -20,6 +21,7 @@ export function AdminOverview({
   filteredCount,
   pageCount,
   query,
+  reviewMode = false,
 }: AdminOverviewProps) {
   const totalCount = workflowStatuses.reduce(
     (total, status) => total + counts[status],
@@ -70,6 +72,7 @@ export function AdminOverview({
           filteredCount={filteredCount}
           pageCount={pageCount}
           query={query}
+          reviewMode={reviewMode}
         />
       </div>
     </main>

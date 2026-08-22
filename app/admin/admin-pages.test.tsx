@@ -34,6 +34,9 @@ const mocks = vi.hoisted(() => {
       throw new Error("NEXT_NOT_FOUND");
     }),
     queueQuery,
+    redirect: vi.fn(() => {
+      throw new Error("NEXT_REDIRECT");
+    }),
     requireAdmin: vi.fn(),
     signOut: vi.fn(),
     updateEngagementStatus: vi.fn(),
@@ -44,9 +47,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
   notFound: mocks.notFound,
-  redirect: vi.fn(() => {
-    throw new Error("NEXT_REDIRECT");
-  }),
+  redirect: mocks.redirect,
 }));
 vi.mock("@/lib/auth/admin", () => ({
   hasSupabaseConfiguration: () =>
@@ -269,6 +270,30 @@ describe("admin route data access", () => {
       expect.stringContaining("page=3"),
     );
     expect(screen.getByRole("link", { name: /Genesis GV80/i })).toBeVisible();
+  });
+
+  it("canonicalizes a queue page beyond the final filtered page", async () => {
+    mocks.loadAdminEngagementPage.mockResolvedValueOnce({
+      count: 26,
+      data: [],
+      error: null,
+    });
+
+    await expect(
+      AdminPage({
+        searchParams: Promise.resolve({
+          page: "99",
+          payment: "paid",
+          q: "Buyer@Example.com",
+          sort: "customer",
+          status: "searching",
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/admin?status=searching&payment=paid&q=buyer%40example.com&sort=customer&page=2",
+    );
   });
 
   it("loads an exact, bounded status-history page with older/newer controls", async () => {

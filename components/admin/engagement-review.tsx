@@ -23,7 +23,8 @@ type EngagementReviewProps = {
   historyPage: number;
   historyPageCount: number;
   historyTotal: number;
-  statusAction: (input: {
+  reviewMode?: boolean;
+  statusAction?: (input: {
     engagementId: string;
     nextStatus: WorkflowStatus;
     note: string;
@@ -92,8 +93,13 @@ function vehicleTitle(
     .join(" ");
 }
 
-function historyPageHref(engagementId: string, page: number): string {
-  return `/admin/engagements/${engagementId}?historyPage=${page}#admin-history-title`;
+function historyPageHref(
+  engagementId: string,
+  page: number,
+  reviewMode: boolean,
+): string {
+  const base = reviewMode ? "/preview/admin" : "/admin";
+  return `${base}/engagements/${engagementId}?historyPage=${page}#admin-history-title`;
 }
 
 export function EngagementReview({
@@ -102,6 +108,7 @@ export function EngagementReview({
   historyPage,
   historyPageCount,
   historyTotal,
+  reviewMode = false,
   statusAction,
   updates,
 }: EngagementReviewProps) {
@@ -110,6 +117,12 @@ export function EngagementReview({
     StatusActionResult | null,
     FormData
   >(async (_previous, formData) => {
+    if (!statusAction) {
+      return {
+        ok: false,
+        error: "Workflow updates are unavailable in this review fixture.",
+      };
+    }
     return statusAction({
       engagementId: engagement.id,
       nextStatus: formData.get("nextStatus") as WorkflowStatus,
@@ -121,7 +134,10 @@ export function EngagementReview({
   return (
     <main id="admin-main" className="admin-main">
       <section className="wrap admin-review-head">
-        <Link className="tlink" href="/admin">
+        <Link
+          className="tlink"
+          href={reviewMode ? "/preview/admin" : "/admin"}
+        >
           <span aria-hidden="true">←</span> Return to queue
         </Link>
         <div className="admin-review-head__title">
@@ -364,7 +380,11 @@ export function EngagementReview({
             <nav className="admin-pagination" aria-label="Status history pages">
               {historyPage > 1 ? (
                 <Link
-                  href={historyPageHref(engagement.id, historyPage - 1)}
+                  href={historyPageHref(
+                    engagement.id,
+                    historyPage - 1,
+                    reviewMode,
+                  )}
                 >
                   Return to newer updates
                 </Link>
@@ -377,7 +397,11 @@ export function EngagementReview({
               </span>
               {historyPage < historyPageCount ? (
                 <Link
-                  href={historyPageHref(engagement.id, historyPage + 1)}
+                  href={historyPageHref(
+                    engagement.id,
+                    historyPage + 1,
+                    reviewMode,
+                  )}
                 >
                   Load older updates
                 </Link>
@@ -402,7 +426,12 @@ export function EngagementReview({
             </p>
           </div>
 
-          {nextStatuses.length > 0 ? (
+          {reviewMode ? (
+            <p className="admin-empty">
+              Workflow updates are disabled in this local review fixture.
+              Nothing entered here can reach customer or payment data.
+            </p>
+          ) : nextStatuses.length > 0 ? (
             <form action={formAction} className="admin-status-form">
               <label>
                 <span>Next workflow status</span>

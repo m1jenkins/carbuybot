@@ -98,6 +98,54 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 - **Forms:** on dark, the email input is a bottom hairline only, no filled box; focus moves the
   hairline to `--money-dark`.
 
+## Conversational intake
+
+The vehicle brief is a durable interaction pattern, not a themed form or chatbot simulation.
+Keep one current question prominent while retaining committed prompts and answers as readable
+context. A neutral hairline progress track and plain “Question N of M” copy provide orientation;
+they do not divide the flow into card-like pages.
+
+- Incoming prompts remain unboxed and left aligned. Committed customer answers sit to the right
+  on near-black, with teal used only when the answer itself is a budget or other money value.
+- Use quick replies for constrained choices and a labelled bottom composer for free text. Preserve
+  keyboard submission, visible validation, predictable focus, and screen-reader status updates.
+- Save an answer before advancing in the real product. In local review fixtures, keep interaction
+  in memory and explicitly say that nothing is saved.
+- No fake activity appears: never add typing delays, online indicators, bot avatars, personality
+  filler, or invented progress. The transcript represents only confirmed customer input.
+
+Approved production references establish the hierarchy without dictating CarBuyerBots chrome:
+[Speak’s one-question composer](https://mobbin.com/screens/c865f950-a4e6-49a9-853f-bcedba94fc15)
+keeps one prompt, progress, and composer legible together;
+[Cleo’s persistent onboarding thread](https://mobbin.com/screens/2c28f1dd-5d34-4aa8-ae74-3ebe71f7cc4f)
+shows why prior turns should remain available as context. CarBuyerBots removes their mascots,
+gradients, novelty copy, and decorative navigation.
+
+## Customer portal
+
+- Lead with the current workflow stage and one factual next step. Status uses neutral typography,
+  labels, whitespace, and hairline progress/timeline rules—never colorful status chips.
+- The payment amount is the only prominent teal value. Payment state, workflow state, navigation,
+  buttons, and progress remain ink/graphite unless the text itself is a money amount.
+- Show the submitted brief, payment and engagement references, and customer-visible updates as a
+  record. Do not imply that work is happening between confirmed updates.
+- Multiple engagements use a simple hairline switcher. Mobile layouts stack labelled values without
+  hiding identifiers or introducing horizontal scrolling.
+- Empty and error states say what is known, what is unavailable, and whether anything changed.
+
+## Admin review
+
+- Queue counts come from exact stored records. Filters, search, sort, pagination, and range copy
+  must agree with the returned page; an out-of-range page canonicalizes to the final real page.
+- Tables collapse into labelled block rows below the mobile breakpoint. Keep the semantic table and
+  clipped column headers for assistive technology; do not replace it with unrelated cards.
+- Detail pages separate customer, payment, brief, history, and controlled-update sections with
+  whitespace and hairlines. Workflow status remains neutral typography.
+- Every operational update requires a valid transition plus concrete customer-visible title and
+  note. Never prefill an update, synthesize a timeline entry, or show fake activity.
+- Teal remains money-only: fee amounts may use it; paid badges, queue states, workflow controls,
+  success messages, and navigation may not.
+
 ## Copy rules
 
 - Plain and concrete. Short sentences. Say the number.
