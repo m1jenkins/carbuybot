@@ -29,6 +29,7 @@ type IntakeThreadProps = {
   engagementId: string;
   initialDraft: IntakeAnswers;
   initialQuestionId?: string | null;
+  revisionMode?: boolean;
 };
 
 function initialActiveQuestion(
@@ -49,6 +50,20 @@ function usesComposer(question: IntakeQuestion): boolean {
   return !["single-choice", "confirmation"].includes(question.kind);
 }
 
+function isSelectedChoice(
+  question: IntakeQuestion,
+  choiceValue: string,
+  answer: unknown,
+): boolean {
+  if (question.kind === "confirmation") {
+    return false;
+  }
+  if (choiceValue === "__none__") {
+    return answer === null || (Array.isArray(answer) && answer.length === 0);
+  }
+  return String(answer) === choiceValue;
+}
+
 function inputModeFor(
   question: IntakeQuestion,
 ): "decimal" | "numeric" | "text" {
@@ -65,6 +80,7 @@ export function IntakeThread({
   engagementId,
   initialDraft,
   initialQuestionId,
+  revisionMode = false,
 }: IntakeThreadProps) {
   const router = useRouter();
   const [answers, setAnswers] = useState<IntakeAnswers>(initialDraft);
@@ -80,7 +96,7 @@ export function IntakeThread({
   });
   const [error, setError] = useState("");
   const [isConsentCommitted, setIsConsentCommitted] = useState(
-    initialDraft.consent === true,
+    initialDraft.consent === true && !revisionMode,
   );
   const [isPending, startTransition] = useTransition();
   const promptRef = useRef<HTMLParagraphElement>(null);
@@ -214,7 +230,7 @@ export function IntakeThread({
         </Link>
         <div className="intake__orientation">
           <p className="label" id="intake-title">
-            Vehicle brief
+            {revisionMode ? "Revise vehicle brief" : "Vehicle brief"}
           </p>
           <p className="cap num" aria-hidden="true">
             Question {position} of {questions.length}
@@ -288,6 +304,11 @@ export function IntakeThread({
                   className="intake__reply"
                   key={choice.value}
                   type="button"
+                  aria-pressed={isSelectedChoice(
+                    activeQuestion,
+                    choice.value,
+                    answers[activeQuestion.id],
+                  )}
                   onClick={() =>
                     void commitAnswer(
                       activeQuestion.kind === "confirmation"
@@ -296,7 +317,9 @@ export function IntakeThread({
                     )
                   }
                 >
-                  {choice.label}
+                  {revisionMode && activeQuestion.kind === "confirmation"
+                    ? "Submit revisions"
+                    : choice.label}
                 </button>
               ))}
             </fieldset>

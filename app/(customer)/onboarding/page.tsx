@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { IntakeThread } from "@/components/onboarding/intake-thread";
 import type { IntakeAnswers } from "@/components/onboarding/intake-questions";
 import type { Json } from "@/lib/supabase/database.types";
+import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
 
 function draftAnswers(value: Json | null | undefined): IntakeAnswers {
@@ -10,6 +11,37 @@ function draftAnswers(value: Json | null | undefined): IntakeAnswers {
     return {};
   }
   return { ...value };
+}
+
+function finalizedBriefAnswers(
+  brief: Tables<"vehicle_briefs"> | null,
+): IntakeAnswers {
+  if (!brief) {
+    return {};
+  }
+
+  return {
+    budgetCents: brief.budget_cents,
+    city: brief.city,
+    colors: brief.colors,
+    condition: brief.condition,
+    consent: brief.consent,
+    dealBreakers: brief.deal_breakers,
+    financingPreference: brief.financing_preference,
+    hasTradeIn: brief.has_trade_in,
+    make: brief.make,
+    model: brief.model,
+    notes: brief.notes,
+    options: brief.options,
+    postalCode: brief.postal_code,
+    searchRadiusMiles: brief.search_radius_miles,
+    state: brief.state,
+    timeline: brief.timeline,
+    tradeInDetails: brief.trade_in_details,
+    trim: brief.trim,
+    yearMax: brief.year_max,
+    yearMin: brief.year_min,
+  };
 }
 
 export default async function OnboardingPage() {
@@ -31,11 +63,10 @@ export default async function OnboardingPage() {
 
   const { data: engagement, error: engagementError } = await supabase
     .from("engagements")
-    .select("id")
+    .select("id, workflow_status")
     .eq("user_id", user.id)
     .eq("payment_status", "paid")
-    .eq("workflow_status", "awaiting_brief")
-    .is("onboarding_completed_at", null)
+    .in("workflow_status", ["awaiting_brief", "brief_submitted"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -55,13 +86,20 @@ export default async function OnboardingPage() {
     redirect("/portal");
   }
 
-  const { data: draft, error: draftError } = await supabase
-    .from("brief_drafts")
-    .select("answers, current_question_id")
-    .eq("engagement_id", engagement.id)
-    .maybeSingle();
+  const [draftResult, briefResult] = await Promise.all([
+    supabase
+      .from("brief_drafts")
+      .select("answers, current_question_id")
+      .eq("engagement_id", engagement.id)
+      .maybeSingle(),
+    supabase
+      .from("vehicle_briefs")
+      .select("*")
+      .eq("engagement_id", engagement.id)
+      .maybeSingle(),
+  ]);
 
-  if (draftError) {
+  if (draftResult.error || briefResult.error) {
     return (
       <main className="setup-state">
         <div>
@@ -73,12 +111,21 @@ export default async function OnboardingPage() {
     );
   }
 
+  const isRevision = engagement.workflow_status === "brief_submitted";
+  const initialDraft = draftResult.data
+    ? draftAnswers(draftResult.data.answers)
+    : finalizedBriefAnswers(briefResult.data);
+
   return (
     <main>
       <IntakeThread
         engagementId={engagement.id}
-        initialDraft={draftAnswers(draft?.answers)}
-        initialQuestionId={draft?.current_question_id}
+        initialDraft={initialDraft}
+        initialQuestionId={
+          draftResult.data?.current_question_id ??
+          (isRevision ? "condition" : undefined)
+        }
+        revisionMode={isRevision}
       />
     </main>
   );

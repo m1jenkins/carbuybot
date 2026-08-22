@@ -16,3 +16,17 @@ describe("landing design constraints", () => {
     expect(styles).toContain(".msg--agent .who{color:var(--on-dark)}");
   });
 });
+
+describe("customer portal design constraints", () => {
+  it("uses editorial hairlines without gradients, shadows, or non-money teal", () => {
+    const portalStyles = styles.match(
+      /\/\* ── customer portal[\s\S]*?(?=\/\* ── conversational intake)/,
+    )?.[0];
+
+    expect(portalStyles).toBeDefined();
+    expect(portalStyles).not.toMatch(/gradient|shadow/);
+    expect(portalStyles).not.toMatch(/--money(?:-dark)?/);
+    expect(portalStyles).toContain("border-top:1px solid var(--rule)");
+    expect(portalStyles).toContain("background:var(--paper)");
+  });
+});

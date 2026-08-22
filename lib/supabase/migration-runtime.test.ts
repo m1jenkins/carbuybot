@@ -38,6 +38,15 @@ const intakeHardeningMigration = intakeHardeningMigrationName
       "utf8",
     )
   : "";
+const briefRevisionsMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_brief_revisions.sql"));
+const briefRevisionsMigration = briefRevisionsMigrationName
+  ? readFileSync(
+      join(process.cwd(), "supabase/migrations", briefRevisionsMigrationName),
+      "utf8",
+    )
+  : "";
 
 const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const missingEngagementId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
@@ -343,6 +352,7 @@ describe("Stripe fulfillment migration runtime", () => {
     await db.exec(fulfillmentMigration);
     await db.exec(intakeMigration);
     await db.exec(intakeHardeningMigration);
+    await db.exec(briefRevisionsMigration);
   });
 
   afterEach(async () => {
@@ -606,7 +616,7 @@ describe("Stripe fulfillment migration runtime", () => {
     expect(visibleBrief.rows[0]?.make).toBe("Genesis");
   });
 
-  it("finalizes the latest locked draft, workflow, first update, and deletion atomically", async () => {
+  it("finalizes the latest locked draft, workflow, first update, and retained revision draft atomically", async () => {
     await insertClaimedPaidEngagement(db);
     await insertDraft(db, completeDraftAnswers);
     await asAuthenticatedUser(db, userId, () =>
@@ -646,7 +656,7 @@ describe("Stripe fulfillment migration runtime", () => {
     );
     expect(state.rows[0]).toMatchObject({
       budget_cents: 6_000_000,
-      draft_count: 0,
+      draft_count: 1,
       make: "Toyota",
       status: "brief_submitted",
       title: "Brief submitted",
@@ -720,5 +730,119 @@ describe("Stripe fulfillment migration runtime", () => {
       draft_count: 1,
       workflow_status: "awaiting_brief",
     });
+  });
+
+  it("lets the paid owner revise and re-finalize only while the brief remains submitted", async () => {
+    await insertClaimedPaidEngagement(db);
+    await insertDraft(db, completeDraftAnswers);
+    await asRole(db, "service_role", () => finalizeBrief(db));
+
+    await expect(
+      asAuthenticatedUser(db, userId, () =>
+        saveBriefAnswer(db, "make", "Toyota", null),
+      ),
+    ).resolves.toMatchObject({ make: "Toyota" });
+    await expect(
+      asAuthenticatedUser(db, otherUserId, () =>
+        saveBriefAnswer(db, "make", "Tampered", null),
+      ),
+    ).rejects.toThrow(/owned paid engagement/i);
+    await expect(
+      asRole(db, "service_role", () => finalizeBrief(db)),
+    ).resolves.toBe(true);
+
+    const revised = await db.query<{
+      draft_count: number;
+      make: string;
+      submitted_count: number;
+      updated_count: number;
+      workflow_status: string;
+    }>(
+      `
+        select
+          e.workflow_status,
+          b.make,
+          (select count(*)::int from public.brief_drafts) as draft_count,
+          (
+            select count(*)::int
+            from public.status_updates
+            where title = 'Brief submitted'
+          ) as submitted_count,
+          (
+            select count(*)::int
+            from public.status_updates
+            where title = 'Brief updated'
+          ) as updated_count
+        from public.engagements e
+        join public.vehicle_briefs b on b.engagement_id = e.id
+        where e.id = $1
+      `,
+      [engagementId],
+    );
+    expect(revised.rows[0]).toEqual({
+      draft_count: 1,
+      make: "Toyota",
+      submitted_count: 1,
+      updated_count: 1,
+      workflow_status: "brief_submitted",
+    });
+
+    await asRole(db, "service_role", () =>
+      db.query(
+        `
+          update public.engagements
+          set workflow_status = 'in_review'
+          where id = $1
+        `,
+        [engagementId],
+      ),
+    );
+    await expect(
+      asAuthenticatedUser(db, userId, () =>
+        saveBriefAnswer(db, "make", "Blocked", null),
+      ),
+    ).rejects.toThrow(/owned paid engagement/i);
+  });
+
+  it("lets an owner select only customer-visible status history", async () => {
+    await insertClaimedPaidEngagement(db);
+    await asRole(db, "service_role", () =>
+      db.query(
+        `
+          insert into public.status_updates (
+            engagement_id,
+            status,
+            title,
+            note,
+            customer_visible
+          )
+          values
+            ($1, 'searching', 'Customer update', 'Visible note', true),
+            ($1, 'searching', 'Internal update', 'Internal only', false)
+        `,
+        [engagementId],
+      ),
+    );
+
+    const ownerUpdates = await asAuthenticatedUser(db, userId, () =>
+      db.query<{ title: string }>(
+        `
+          select title
+          from public.status_updates
+          where engagement_id = $1
+          order by created_at
+        `,
+        [engagementId],
+      ),
+    );
+    const otherUpdates = await asAuthenticatedUser(db, otherUserId, () =>
+      db.query<{ title: string }>(
+        "select title from public.status_updates where engagement_id = $1",
+        [engagementId],
+      ),
+    );
+
+    expect(ownerUpdates.rows).toEqual([{ title: "Customer update" }]);
+    expect(otherUpdates.rows).toEqual([]);
   });
 });

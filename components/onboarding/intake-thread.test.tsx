@@ -362,4 +362,58 @@ describe("IntakeThread", () => {
       }),
     ).toBeVisible();
   });
+
+  it("shows mapped answers and revision-specific submission language", () => {
+    const revisionDraft = {
+      condition: "either",
+      make: "Genesis",
+      model: "GV80",
+      yearMin: 2024,
+      yearMax: 2026,
+      trim: null,
+      colors: ["Black"],
+      options: ["Advanced package"],
+      dealBreakers: [],
+      budgetCents: 6000000,
+      city: "Austin",
+      state: "TX",
+      postalCode: "78701",
+      searchRadiusMiles: 100,
+      timeline: "within_30_days",
+      hasTradeIn: false,
+      financingPreference: "undecided",
+      notes: null,
+      consent: true,
+    };
+    const { rerender } = render(
+      <IntakeThread
+        engagementId="eng_1"
+        initialDraft={revisionDraft}
+        initialQuestionId="condition"
+        revisionMode
+      />,
+    );
+
+    expect(screen.getByText("Revise vehicle brief")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Either" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    rerender(
+      <IntakeThread
+        key="revision-consent"
+        engagementId="eng_1"
+        initialDraft={revisionDraft}
+        initialQuestionId="consent"
+        revisionMode
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /submit revisions/i }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /retry submission/i }),
+    ).not.toBeInTheDocument();
+  });
 });

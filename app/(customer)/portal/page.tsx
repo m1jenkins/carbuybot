@@ -1,0 +1,154 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { PortalShell } from "@/components/portal/portal-shell";
+import { createServerClient } from "@/lib/supabase/server";
+
+function hasSupabaseConfiguration(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim(),
+  );
+}
+
+async function signOut() {
+  "use server";
+
+  if (!hasSupabaseConfiguration()) {
+    redirect("/sign-in");
+  }
+
+  const supabase = await createServerClient();
+  await supabase.auth.signOut();
+  redirect("/sign-in");
+}
+
+function SetupState() {
+  return (
+    <main className="setup-state">
+      <div>
+        <span className="label">Setup required</span>
+        <h1 className="d2">Customer access is not configured.</h1>
+        <p className="lede">
+          Add the Supabase project URL and publishable key to enable the secure
+          status portal.
+        </p>
+        <Link className="btn btn--ink" href="/">
+          Return home
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function PortalMessage({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <div className="portal">
+      <header className="portal-header">
+        <div className="wrap portal-header__inner">
+          <Link className="portal-brand" href="/">
+            CarBuyerBots
+          </Link>
+          <form action={signOut}>
+            <button className="portal-signout" type="submit">
+              Sign out
+            </button>
+          </form>
+        </div>
+      </header>
+      <main className="wrap portal-message">
+        <span className="label">Customer portal</span>
+        <h1 className="d2">{title}</h1>
+        <p className="lede">{description}</p>
+        <Link className="tlink" href="/">
+          Return home <span aria-hidden="true">→</span>
+        </Link>
+      </main>
+    </div>
+  );
+}
+
+export default async function PortalPage() {
+  if (!hasSupabaseConfiguration()) {
+    return <SetupState />;
+  }
+
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/sign-in?next=%2Fportal");
+  }
+
+  const { data: engagement, error: engagementError } = await supabase
+    .from("engagements")
+    .select(
+      "amount_cents, created_at, currency, id, payment_status, stripe_checkout_session_id, stripe_payment_intent_id, workflow_status",
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (engagementError) {
+    return (
+      <PortalMessage
+        title="We could not load your portal."
+        description="Refresh the page to try again. No account details were changed."
+      />
+    );
+  }
+
+  if (!engagement) {
+    return (
+      <PortalMessage
+        title="No active engagement."
+        description="No paid vehicle search is linked to this signed-in account. Use the verified email from checkout, or contact support with your payment reference."
+      />
+    );
+  }
+
+  const [briefResult, updatesResult] = await Promise.all([
+    supabase
+      .from("vehicle_briefs")
+      .select(
+        "budget_cents, city, colors, condition, deal_breakers, financing_preference, has_trade_in, make, model, notes, options, postal_code, search_radius_miles, state, timeline, trade_in_details, trim, year_max, year_min",
+      )
+      .eq("engagement_id", engagement.id)
+      .maybeSingle(),
+    supabase
+      .from("status_updates")
+      .select(
+        "created_at, customer_visible, id, note, status, title",
+      )
+      .eq("engagement_id", engagement.id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (briefResult.error || updatesResult.error) {
+    return (
+      <PortalMessage
+        title="We could not load your status record."
+        description="Refresh the page to try again. Your engagement remains securely stored."
+      />
+    );
+  }
+
+  return (
+    <PortalShell
+      brief={briefResult.data}
+      engagement={engagement}
+      signOutAction={signOut}
+      updates={updatesResult.data ?? []}
+    />
+  );
+}

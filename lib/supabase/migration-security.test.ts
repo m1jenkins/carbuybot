@@ -60,6 +60,23 @@ const normalizedIntakeHardeningSql = intakeHardeningMigration.replace(
   /\s+/g,
   " ",
 );
+const briefRevisionsMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_brief_revisions.sql"));
+const briefRevisionsMigration = briefRevisionsMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        briefRevisionsMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
+const normalizedBriefRevisionsSql = briefRevisionsMigration.replace(
+  /\s+/g,
+  " ",
+);
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -361,5 +378,65 @@ describe("conversational intake review hardening", () => {
 
     expect(saveFunction).toContain(engagementLock);
     expect(finalizationFunction).toContain(engagementLock);
+  });
+});
+
+describe("submitted brief revision security", () => {
+  it("opens draft writes only for the two editable workflow stages", () => {
+    expect(normalizedBriefRevisionsSql).toContain(
+      'drop policy "Customers can start a paid vehicle brief draft" on public.brief_drafts;',
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      'drop policy "Customers can update their paid vehicle brief draft" on public.brief_drafts;',
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "engagements.workflow_status in ('awaiting_brief', 'brief_submitted')",
+    );
+    expect(normalizedBriefRevisionsSql).not.toContain(
+      "grant insert, update on table public.vehicle_briefs to authenticated",
+    );
+  });
+
+  it("keeps answer saves authenticated and finalization service-role only", () => {
+    expect(normalizedBriefRevisionsSql).toContain(
+      "create or replace function public.save_brief_answer(",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "security invoker set search_path = ''",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "grant execute on function public.save_brief_answer(uuid, text, jsonb, text) to authenticated;",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "grant execute on function public.finalize_vehicle_brief(uuid, uuid) to service_role;",
+    );
+
+    const finalizationFunction = normalizedBriefRevisionsSql.match(
+      /create or replace function public\.finalize_vehicle_brief\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(finalizationFunction).toBeDefined();
+    expect(finalizationFunction).not.toContain("security definer");
+    expect(finalizationFunction).not.toContain(
+      "delete from public.brief_drafts",
+    );
+    expect(finalizationFunction).toContain(
+      "target_engagement.workflow_status = 'brief_submitted'",
+    );
+    expect(finalizationFunction).toContain("'Brief updated'");
+  });
+
+  it("backfills editable submitted briefs into conversational drafts", () => {
+    expect(normalizedBriefRevisionsSql).toContain(
+      "insert into public.brief_drafts",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "pg_catalog.jsonb_build_object(",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "engagements.workflow_status = 'brief_submitted'",
+    );
+    expect(normalizedBriefRevisionsSql).toContain(
+      "on conflict (engagement_id) do nothing",
+    );
   });
 });
