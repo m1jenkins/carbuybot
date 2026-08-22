@@ -30,10 +30,13 @@ describe("LandingPage", () => {
 
     const dealSheet = document.getElementById("deal-sheet");
     const compare = document.getElementById("compare");
-    expect(dealSheet).not.toBeNull();
-    expect(compare).not.toBeNull();
+    expect(dealSheet).toBeInstanceOf(HTMLElement);
+    expect(compare).toBeInstanceOf(HTMLElement);
+    if (!(dealSheet instanceof HTMLElement) || !(compare instanceof HTMLElement)) {
+      throw new Error("Expected deal sheet and compare sections");
+    }
     expect(
-      dealSheet?.compareDocumentPosition(compare!) &
+      dealSheet.compareDocumentPosition(compare) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
