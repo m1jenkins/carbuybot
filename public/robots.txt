@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /auth/
+Disallow: /checkout/
+Disallow: /onboarding
+Disallow: /portal
+Disallow: /preview/
+Disallow: /sign-in
+
+Sitemap: https://carbuyerbots.com/sitemap.xml
