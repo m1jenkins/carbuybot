@@ -325,6 +325,24 @@ describe("Phase 1 static security invariants", () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
+  it("keeps the catalog bootstrap test-only and free of Tax or invoice creation", () => {
+    const bootstrap = read("scripts/bootstrap-stripe-catalog.mjs");
+
+    expect(bootstrap).toContain("assertTestStripeKey");
+    expect(bootstrap).toContain(".env.local");
+    expect(bootstrap).not.toMatch(/automatic_tax|invoice_creation/);
+    expect(() =>
+      execFileSync(process.execPath, ["scripts/bootstrap-stripe-catalog.mjs"], {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          STRIPE_SECRET_KEY: "sk_live_review_detector",
+        },
+      }),
+    ).toThrow(/test-mode/i);
+  });
+
   it("keeps Checkout one-time and statically excludes forbidden options and client imports", () => {
     const checkout = read("app/api/checkout/route.ts");
     const clientModules = [

@@ -201,6 +201,17 @@ In a Stripe sandbox or Dashboard test mode:
    `STRIPE_PRICE_INTRO_ID` and `STRIPE_PRICE_STANDARD_ID`.
 5. Use a test secret or restricted-test secret in `STRIPE_SECRET_KEY`.
 
+Or, with that test key already in `.env.local`, create the same catalog
+without using the Dashboard:
+
+```bash
+npm run bootstrap:stripe
+```
+
+The script refuses live keys, does not enable Stripe Tax, and prints the
+Price IDs to paste. See `docs/stripe-integration-plan.md` for the sandbox
+notes and the reserved (unwired) invoicing path.
+
 Do not create recurring Prices, enable automatic tax, generate invoices,
 enable payment-method saving, or configure connected-account transfers. The
 server creates only Stripe-hosted Checkout Sessions with `mode: "payment"` and

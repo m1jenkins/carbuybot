@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import { CheckoutForm } from "../checkout/checkout-form";
+import { DealSheet } from "./deal-sheet";
 import { LandingMotion } from "./landing-motion";
 
 export function LandingPage() {
@@ -329,6 +330,8 @@ export function LandingPage() {
               comparison, not a specific customer&rsquo;s deal.</p>
           </div>
         </section>
+
+        <DealSheet />
 
         {/* Three-way comparison */}
         <section className="sec rule-top" id="compare">

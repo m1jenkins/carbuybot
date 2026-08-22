@@ -72,4 +72,7 @@ git diff --check
 See [`docs/setup-phase-1-portal.md`](docs/setup-phase-1-portal.md) for local
 Supabase migrations, hosted email-confirmation and magic-link redirects, dual
 admin assignment, Stripe test Products/Prices, webhook forwarding and
-registration, supported events, and the deployment checklist.
+registration, supported events, and the deployment checklist. Cloud Agent
+run notes are in [`AGENTS.md`](AGENTS.md). The Stripe plan, catalog
+bootstrap (`npm run bootstrap:stripe`), and reserved invoicing path are in
+[`docs/stripe-integration-plan.md`](docs/stripe-integration-plan.md).

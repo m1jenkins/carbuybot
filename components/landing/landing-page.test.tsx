@@ -25,6 +25,29 @@ describe("LandingPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows the compiled deal sheet between the offer cards and the comparison", () => {
+    render(<LandingPage />);
+
+    const dealSheet = document.getElementById("deal-sheet");
+    const compare = document.getElementById("compare");
+    expect(dealSheet).not.toBeNull();
+    expect(compare).not.toBeNull();
+    expect(
+      dealSheet?.compareDocumentPosition(compare!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: /one sheet, not forty emails/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", {
+        name: /out-the-door quotes compiled from every dealer that replied/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("gv80-3.5t-prestige.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("Yours to keep")).toBeInTheDocument();
+  });
+
   it("states the actual Checkout-before-brief payment sequence", () => {
     render(<LandingPage />);
 
@@ -59,6 +82,7 @@ describe("LandingPage", () => {
     const marketingSource = [
       "app/layout.tsx",
       "components/landing/landing-page.tsx",
+      "components/landing/deal-sheet.tsx",
     ]
       .map((path) => readFileSync(join(process.cwd(), path), "utf8"))
       .join("\n");

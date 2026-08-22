@@ -91,6 +91,9 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 - **Tables:** the three-way comparison is a real `<table>` with a screen-reader-only caption. The
   "us" column is a continuous `--paper-2` band from header to last row. Below 720px it stacks into
   one labelled group per dimension via `data-col` — it never becomes a one-column-at-a-time scroll.
+- **Deal sheet:** the compiled workbook is shown as a spreadsheet in the page’s own materials —
+  lettered columns, a formula bar, sticky dealer names, and teal only on the winning out-the-door
+  figure. Figures are illustrative. The grid may scroll horizontally; it does not become cards.
 - **Negotiation thread:** hairline-separated messages, no chat bubbles. Dealer in `--on-dark-soft`,
   agent in `--on-dark`, and the message where the deal closed carries a 2px teal spine.
 - **Pricing:** one figure at `clamp(74px,12vw,164px)`, the struck previous price beside it, and
