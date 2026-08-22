@@ -1,26 +1,34 @@
 import { AdminOverview } from "@/components/admin/admin-overview";
-import { ReviewFixtureNotice } from "@/components/preview/review-fixture-notice";
+import { AdminReviewShell } from "@/components/preview/admin-review-shell";
 import {
   reviewAdminCounts,
-  reviewAdminQuery,
-  reviewAdminQueue,
+  selectReviewAdminQueue,
 } from "@/lib/preview/fixtures";
 import { requireReviewFixture } from "@/lib/preview/guard";
+import { parseAdminQueueSearchParams } from "@/lib/domain/admin-query";
 
-export default function PreviewAdminPage() {
+type PreviewAdminPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function PreviewAdminPage({
+  searchParams = Promise.resolve({}),
+}: PreviewAdminPageProps = {}) {
   requireReviewFixture();
+  const parsedQuery = parseAdminQueueSearchParams(await searchParams);
+  const query = { ...parsedQuery, page: 1 };
+  const engagements = selectReviewAdminQueue(query);
 
   return (
-    <>
-      <ReviewFixtureNotice surface="Admin overview" />
+    <AdminReviewShell surface="Admin overview">
       <AdminOverview
         counts={reviewAdminCounts}
-        engagements={reviewAdminQueue}
-        filteredCount={reviewAdminQueue.length}
+        engagements={engagements}
+        filteredCount={engagements.length}
         pageCount={1}
-        query={reviewAdminQuery}
+        query={query}
         reviewMode
       />
-    </>
+    </AdminReviewShell>
   );
 }

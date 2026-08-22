@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { EngagementReview } from "@/components/admin/engagement-review";
-import { ReviewFixtureNotice } from "@/components/preview/review-fixture-notice";
+import { AdminReviewShell } from "@/components/preview/admin-review-shell";
 import {
   REVIEW_ENGAGEMENT_ID,
   reviewAdminBrief,
@@ -24,8 +24,7 @@ export default async function PreviewAdminDetailPage({
   }
 
   return (
-    <>
-      <ReviewFixtureNotice surface="Admin engagement detail" />
+    <AdminReviewShell surface="Admin engagement detail">
       <EngagementReview
         brief={reviewAdminBrief}
         engagement={reviewAdminDetail}
@@ -35,6 +34,6 @@ export default async function PreviewAdminDetailPage({
         reviewMode
         updates={reviewAdminUpdates}
       />
-    </>
+    </AdminReviewShell>
   );
 }

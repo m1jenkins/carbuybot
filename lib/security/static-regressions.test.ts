@@ -1,13 +1,27 @@
 // @vitest-environment node
 
+import { execFileSync } from "node:child_process";
 import {
+  existsSync,
   readFileSync,
   readdirSync,
   statSync,
 } from "node:fs";
-import { join, relative } from "node:path";
+import {
+  dirname,
+  extname,
+  join,
+  relative,
+  resolve,
+} from "node:path";
 
-import { describe, expect, it } from "vitest";
+import type Stripe from "stripe";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+import { assertTestStripeKey } from "@/lib/stripe/client";
+import { processEvent } from "@/lib/stripe/fulfillment";
 
 const root = process.cwd();
 
@@ -25,12 +39,134 @@ function filesUnder(path: string): string[] {
   });
 }
 
+function normalizeSql(sql: string): string {
+  return sql.replace(/\s+/g, " ").trim();
+}
+
+function activePolicies(sql: string): Map<string, string> {
+  const policies = new Map<string, string>();
+  const statements = sql.match(
+    /(?:create policy (?:"[^"]+"|[a-z_][a-z0-9_$]*)\s+on public\.[a-z_]+[\s\S]*?;|drop policy(?: if exists)? (?:"[^"]+"|[a-z_][a-z0-9_$]*)\s+on public\.[a-z_]+\s*;)/gi,
+  ) ?? [];
+
+  for (const statement of statements) {
+    const normalized = normalizeSql(statement);
+    const created = normalized.match(
+      /^create policy (?:"([^"]+)"|([a-z_][a-z0-9_$]*)) on public\.([a-z_]+) /i,
+    );
+    if (created) {
+      policies.set(`${created[3]}:${created[1] ?? created[2]}`, normalized);
+      continue;
+    }
+
+    const dropped = normalized.match(
+      /^drop policy(?: if exists)? (?:"([^"]+)"|([a-z_][a-z0-9_$]*)) on public\.([a-z_]+);$/i,
+    );
+    if (dropped) {
+      policies.delete(`${dropped[3]}:${dropped[1] ?? dropped[2]}`);
+    }
+  }
+
+  return policies;
+}
+
+const sourceExtensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
+
+function resolveLocalImport(
+  importer: string,
+  specifier: string,
+): string | null {
+  const base = specifier.startsWith("@/")
+    ? join(root, specifier.slice(2))
+    : specifier.startsWith(".")
+      ? resolve(dirname(join(root, importer)), specifier)
+      : null;
+  if (!base) return null;
+
+  const candidates = [
+    base,
+    ...sourceExtensions.map((extension) => `${base}${extension}`),
+    ...sourceExtensions.map((extension) => join(base, `index${extension}`)),
+  ];
+  const match = candidates.find(
+    (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
+  );
+  return match ? relative(root, match).replaceAll("\\", "/") : null;
+}
+
+function runtimeImportSpecifiers(path: string): string[] {
+  const source = read(path);
+  const specifiers = [
+    ...source.matchAll(
+      /\b(?:import|export)\s+(?!type\b)(?:[^;"']*?\s+from\s+)?["']([^"']+)["']/g,
+    ),
+    ...source.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g),
+    ...source.matchAll(/\brequire\(\s*["']([^"']+)["']\s*\)/g),
+  ];
+  return specifiers.map((match) => match[1]);
+}
+
+function localRuntimeImportGraph(entries: readonly string[]): Set<string> {
+  const visited = new Set<string>();
+  const queue = [...entries];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+
+    for (const specifier of runtimeImportSpecifiers(current)) {
+      const dependency = resolveLocalImport(current, specifier);
+      if (dependency && !visited.has(dependency)) {
+        queue.push(dependency);
+      }
+    }
+  }
+
+  return visited;
+}
+
+const relevantTextExtensions = new Set([
+  ".css",
+  ".env",
+  ".html",
+  ".js",
+  ".json",
+  ".jsx",
+  ".md",
+  ".mjs",
+  ".sql",
+  ".toml",
+  ".ts",
+  ".tsx",
+  ".txt",
+  ".xml",
+  ".yaml",
+  ".yml",
+]);
+
+function trackedTextFiles(): string[] {
+  return execFileSync("git", ["ls-files", "-z"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean)
+    .filter((path) => path !== "lib/security/static-regressions.test.ts")
+    .filter(
+      (path) =>
+        path === ".env.example" ||
+        relevantTextExtensions.has(extname(path).toLowerCase()),
+    );
+}
+
 describe("Phase 1 static security invariants", () => {
   const migrationFiles = filesUnder("supabase/migrations")
     .filter((path) => path.endsWith(".sql"))
     .sort();
   const migrationSql = migrationFiles.map(read).join("\n");
   const normalizedSql = migrationSql.replace(/\s+/g, " ");
+  const policies = activePolicies(migrationSql);
 
   it("enables RLS on every public table and leaves Stripe events browser-inaccessible", () => {
     const publicTables = [
@@ -51,11 +187,133 @@ describe("Phase 1 static security invariants", () => {
     );
   });
 
-  it("keeps customer policies owner-scoped and authorization out of user metadata", () => {
-    expect(normalizedSql).toContain(
-      "engagements.user_id = (select auth.uid())",
+  it("allows only the exact reviewed customer and admin policy set", () => {
+    expect([...policies.keys()].sort()).toEqual(
+      [
+        "admin_users:Admins can view admin assignments",
+        "admin_users:Users can view their admin assignment",
+        "brief_drafts:Customers can start an editable paid vehicle brief draft",
+        "brief_drafts:Customers can update their editable paid vehicle brief draft",
+        "brief_drafts:Customers can view their vehicle brief draft",
+        "engagements:Admins can view engagements",
+        "engagements:Customers can view their engagements",
+        "profiles:Admins can view profiles",
+        "profiles:Customers can view their profile",
+        "status_updates:Admins can view status updates",
+        "status_updates:Customers can view visible status updates",
+        "vehicle_briefs:Admins can create vehicle briefs",
+        "vehicle_briefs:Admins can update vehicle briefs",
+        "vehicle_briefs:Admins can view vehicle briefs",
+        "vehicle_briefs:Customers can view their vehicle briefs",
+      ].sort(),
     );
-    expect(normalizedSql).toContain("user_id = (select auth.uid())");
+  });
+
+  it("matches every customer policy to its exact owner-scoped definition", () => {
+    const expected = new Map(
+      [
+        [
+          "profiles:Customers can view their profile",
+          `create policy "Customers can view their profile"
+            on public.profiles for select to authenticated
+            using (id = (select auth.uid()));`,
+        ],
+        [
+          "engagements:Customers can view their engagements",
+          `create policy "Customers can view their engagements"
+            on public.engagements for select to authenticated
+            using (user_id = (select auth.uid()));`,
+        ],
+        [
+          "vehicle_briefs:Customers can view their vehicle briefs",
+          `create policy "Customers can view their vehicle briefs"
+            on public.vehicle_briefs for select to authenticated
+            using (
+              exists (
+                select 1 from public.engagements
+                where engagements.id = vehicle_briefs.engagement_id
+                  and engagements.user_id = (select auth.uid())
+              )
+            );`,
+        ],
+        [
+          "status_updates:Customers can view visible status updates",
+          `create policy "Customers can view visible status updates"
+            on public.status_updates for select to authenticated
+            using (
+              customer_visible
+              and exists (
+                select 1 from public.engagements
+                where engagements.id = status_updates.engagement_id
+                  and engagements.user_id = (select auth.uid())
+              )
+            );`,
+        ],
+        [
+          "admin_users:Users can view their admin assignment",
+          `create policy "Users can view their admin assignment"
+            on public.admin_users for select to authenticated
+            using (user_id = (select auth.uid()));`,
+        ],
+        [
+          "brief_drafts:Customers can view their vehicle brief draft",
+          `create policy "Customers can view their vehicle brief draft"
+            on public.brief_drafts for select to authenticated
+            using (
+              exists (
+                select 1 from public.engagements
+                where engagements.id = brief_drafts.engagement_id
+                  and engagements.user_id = (select auth.uid())
+                  and engagements.payment_status = 'paid'
+              )
+            );`,
+        ],
+        [
+          "brief_drafts:Customers can start an editable paid vehicle brief draft",
+          `create policy "Customers can start an editable paid vehicle brief draft"
+            on public.brief_drafts for insert to authenticated
+            with check (
+              exists (
+                select 1 from public.engagements
+                where engagements.id = brief_drafts.engagement_id
+                  and engagements.user_id = (select auth.uid())
+                  and engagements.payment_status = 'paid'
+                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
+              )
+            );`,
+        ],
+        [
+          "brief_drafts:Customers can update their editable paid vehicle brief draft",
+          `create policy "Customers can update their editable paid vehicle brief draft"
+            on public.brief_drafts for update to authenticated
+            using (
+              exists (
+                select 1 from public.engagements
+                where engagements.id = brief_drafts.engagement_id
+                  and engagements.user_id = (select auth.uid())
+                  and engagements.payment_status = 'paid'
+                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
+              )
+            )
+            with check (
+              exists (
+                select 1 from public.engagements
+                where engagements.id = brief_drafts.engagement_id
+                  and engagements.user_id = (select auth.uid())
+                  and engagements.payment_status = 'paid'
+                  and engagements.workflow_status in ('awaiting_brief', 'brief_submitted')
+              )
+            );`,
+        ],
+      ].map(([key, sql]) => [key, normalizeSql(sql)]),
+    );
+
+    for (const [key, definition] of expected) {
+      expect(policies.get(key), key).toBe(definition);
+    }
+  });
+
+  it("keeps authorization out of mutable user metadata", () => {
     expect(normalizedSql).toContain(
       "create or replace function private.is_admin()",
     );
@@ -88,19 +346,42 @@ describe("Phase 1 static security invariants", () => {
     );
   });
 
-  it("keeps Checkout one-time, test-only, and free of forbidden Stripe options", () => {
+  it("executes the Stripe test-key and live-event guards", async () => {
+    expect(() => assertTestStripeKey("sk_live_review_detector")).toThrow(
+      /test-mode/i,
+    );
+
+    const persist = vi.fn(async () => true);
+    const liveEvent = {
+      data: { object: {} },
+      id: "evt_live_review_detector",
+      livemode: true,
+      type: "checkout.session.completed",
+    } as Stripe.Event;
+    await expect(processEvent(liveEvent, persist)).rejects.toThrow(
+      /test-mode/i,
+    );
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("keeps Checkout one-time and statically excludes forbidden options and client imports", () => {
     const checkout = read("app/api/checkout/route.ts");
-    const stripeClient = read("lib/stripe/client.ts");
-    const fulfillment = read("lib/stripe/fulfillment.ts");
+    const clientModules = [
+      ...filesUnder("app"),
+      ...filesUnder("components"),
+    ]
+      .filter((path) => /\.(ts|tsx)$/.test(path))
+      .filter((path) => read(path).match(/^\s*["']use client["'];/))
+      .map(read)
+      .join("\n");
 
     expect(checkout).toContain('mode: "payment"');
     expect(checkout).not.toMatch(
       /automatic_tax|invoice_creation|setup_future_usage|payment_method_types|subscription_data|application_fee|transfer_data/,
     );
-    expect(stripeClient).toContain("testKeyPrefixes");
-    expect(stripeClient).toContain("liveKeyPrefixes");
-    expect(fulfillment).toContain("if (event.livemode)");
-    expect(fulfillment).toContain('session.mode !== "payment"');
+    expect(clientModules).not.toMatch(
+      /(?:@\/|\.\.?\/).*lib\/stripe\/(?:client|fulfillment|repository)/,
+    );
   });
 });
 
@@ -112,20 +393,32 @@ describe("review fixture isolation and indexing", () => {
     expect(layout).toContain('<html lang="en" suppressHydrationWarning>');
   });
 
-  it("keeps preview modules away from privileged and payment write paths", () => {
-    const previewSources = [
+  it("keeps the full transitive preview import graph away from write paths", () => {
+    const previewEntries = [
       ...filesUnder("app/preview"),
       ...filesUnder("components/preview"),
       ...filesUnder("lib/preview"),
     ]
       .filter((path) => /\.(ts|tsx)$/.test(path))
-      .filter((path) => !path.includes(".test."))
-      .map(read)
-      .join("\n");
+      .filter((path) => !path.includes(".test."));
+    const graph = localRuntimeImportGraph(previewEntries);
+    const prohibitedModules = new Set([
+      "app/(customer)/onboarding/actions.ts",
+      "app/admin/engagements/[id]/actions.ts",
+      "app/api/checkout/route.ts",
+      "lib/stripe/client.ts",
+      "lib/stripe/repository.ts",
+      "lib/supabase/admin.ts",
+      "lib/supabase/server.ts",
+    ]);
 
-    expect(previewSources).not.toMatch(
-      /supabase\/admin|supabase\/server|stripe\/client|stripe\/repository|api\/checkout|onboarding\/actions|engagements\/\[id\]\/actions/,
+    expect([...graph].filter((path) => prohibitedModules.has(path))).toEqual(
+      [],
     );
+    expect(graph).toContain("components/admin/engagement-table.tsx");
+    expect(graph).toContain("lib/admin/engagement-queries.ts");
+
+    const previewSources = [...graph].map(read).join("\n");
     expect(previewSources).not.toMatch(
       /online now|typing(?:\.\.\.|…)|live activity|Math\.random|setInterval|setTimeout/i,
     );
@@ -164,6 +457,64 @@ describe("review fixture isolation and indexing", () => {
   });
 });
 
+describe("repository secret scanning", () => {
+  it("finds no plausible committed production or test secrets", () => {
+    const detectors = [
+      {
+        name: "Stripe API key",
+        pattern: /\b(?:rk|rkcs|sk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g,
+      },
+      {
+        name: "Stripe webhook secret",
+        pattern: /\bwhsec_[A-Za-z0-9]{24,}\b/g,
+      },
+      {
+        name: "Supabase secret key",
+        pattern: /\bsb_secret_[A-Za-z0-9_-]{20,}\b/g,
+      },
+      {
+        name: "JWT",
+        pattern:
+          /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
+      },
+      {
+        name: "GitHub token",
+        pattern: /\bgh[opusr]_[A-Za-z0-9]{30,}\b/g,
+      },
+      {
+        name: "AWS access key",
+        pattern: /\bAKIA[0-9A-Z]{16}\b/g,
+      },
+      {
+        name: "credentialed Postgres URL",
+        pattern: /\bpostgres(?:ql)?:\/\/[^:\s/]+:[^@\s/]{8,}@/g,
+      },
+      {
+        name: "private key",
+        pattern: /-----BEGIN (?:EC |OPENSSH |RSA )?PRIVATE KEY-----/g,
+      },
+    ];
+    const explicitPlaceholders = new Set([
+      "sk_test_your-test-secret-key",
+      "whsec_your-test-webhook-secret",
+    ]);
+    const findings: string[] = [];
+
+    for (const path of trackedTextFiles()) {
+      const source = read(path);
+      for (const detector of detectors) {
+        for (const match of source.matchAll(detector.pattern)) {
+          if (!explicitPlaceholders.has(match[0])) {
+            findings.push(`${detector.name}: ${path}`);
+          }
+        }
+      }
+    }
+
+    expect(findings).toEqual([]);
+  });
+});
+
 describe("setup and durable guidance", () => {
   const documentation = () =>
     [read("README.md"), read("docs/setup-phase-1-portal.md")].join("\n");
@@ -194,9 +545,6 @@ describe("setup and durable guidance", () => {
     expect(docs).toContain("/api/stripe/webhook");
     expect(docs).toContain("checkout.session.completed");
     expect(docs).toContain("checkout.session.async_payment_succeeded");
-    expect(docs).not.toMatch(
-      /\b(?:sk|rk)_live_[A-Za-z0-9]{8,}|\bwhsec_[A-Za-z0-9]{24,}/,
-    );
   });
 
   it("states the explicit Phase 1 exclusions and local-only demo contract", () => {

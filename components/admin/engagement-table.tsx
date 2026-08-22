@@ -194,13 +194,7 @@ export function EngagementTable({
                   </time>
                 </td>
                 <td data-label="Payment">
-                  <span
-                    className={
-                      engagement.paymentStatus === "paid" ? "money" : undefined
-                    }
-                  >
-                    {paymentLabels[engagement.paymentStatus]}
-                  </span>
+                  <span>{paymentLabels[engagement.paymentStatus]}</span>
                   <small className="money num">
                     {formatAmount(
                       engagement.amountCents,

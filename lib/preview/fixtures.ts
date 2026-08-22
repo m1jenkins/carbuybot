@@ -139,6 +139,40 @@ export const reviewAdminQuery: AdminQueueQuery = {
   status: "all",
 };
 
+export function selectReviewAdminQueue(
+  query: AdminQueueQuery,
+): readonly AdminQueueEngagement[] {
+  const filtered = reviewAdminQueue.filter((engagement) => {
+    if (
+      query.status !== "all" &&
+      engagement.workflowStatus !== query.status
+    ) {
+      return false;
+    }
+    if (
+      query.payment !== "all" &&
+      engagement.paymentStatus !== query.payment
+    ) {
+      return false;
+    }
+    if (query.searchId) {
+      return engagement.id === query.searchId;
+    }
+    if (query.search) {
+      return engagement.customerEmail.toLowerCase().includes(query.search);
+    }
+    return true;
+  });
+
+  return [...filtered].sort((left, right) => {
+    if (query.sort === "customer") {
+      return left.customerEmail.localeCompare(right.customerEmail);
+    }
+    const direction = query.sort === "oldest" ? 1 : -1;
+    return left.createdAt.localeCompare(right.createdAt) * direction;
+  });
+}
+
 export const reviewAdminBrief: AdminBrief = {
   budgetCents: reviewPortalBrief.budget_cents,
   city: reviewPortalBrief.city,

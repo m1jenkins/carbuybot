@@ -124,6 +124,13 @@ describe("admin queue dashboard", () => {
     expect(
       screen.getByRole("table", { name: /engagement review queue/i }),
     ).toBeVisible();
+    const queue = screen.getByRole("table", {
+      name: /engagement review queue/i,
+    });
+    expect(within(queue).getByText("Paid")).not.toHaveClass("money");
+    for (const amount of within(queue).getAllByText("$349.00")) {
+      expect(amount).toHaveClass("money");
+    }
     expect(screen.getByText("buyer@example.com").closest("td")).toHaveAttribute(
       "data-label",
       "Customer",
@@ -195,6 +202,7 @@ describe("admin engagement review", () => {
 
     expect(screen.getByText("buyer@example.com")).toBeVisible();
     expect(screen.getByText("$349.00")).toHaveClass("money");
+    expect(screen.getByText("Paid")).not.toHaveClass("money");
     expect(
       screen.getByRole("heading", { level: 1, name: /3.5T Prestige/i }),
     ).toBeVisible();

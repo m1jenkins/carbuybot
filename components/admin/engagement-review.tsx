@@ -212,13 +212,7 @@ export function EngagementReview({
             </div>
             <div>
               <dt>Payment status</dt>
-              <dd
-                className={
-                  engagement.paymentStatus === "paid" ? "money" : undefined
-                }
-              >
-                {paymentLabels[engagement.paymentStatus]}
-              </dd>
+              <dd>{paymentLabels[engagement.paymentStatus]}</dd>
             </div>
             <div>
               <dt>Checkout session</dt>

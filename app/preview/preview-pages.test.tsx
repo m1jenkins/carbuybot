@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -85,14 +91,19 @@ describe("non-production review fixtures", () => {
   });
 
   it("renders customer portal and admin overview/detail fixtures", async () => {
-    const { rerender } = render(PreviewPortalPage());
+    const { rerender } = render(await PreviewPortalPage());
     expect(
       screen.getByRole("heading", { name: /brief in review/i }),
     ).toBeVisible();
     expect(screen.getByText(/local review fixture/i)).toBeVisible();
     expect(screen.getByRole("button", { name: /sign out/i })).toBeDisabled();
 
-    rerender(PreviewAdminPage());
+    rerender(await PreviewAdminPage());
+    expect(
+      screen.getByRole("link", { name: /carbuyerbots admin queue/i }),
+    ).toHaveAttribute("href", "/preview/admin");
+    expect(screen.getByText("Admin console")).toBeVisible();
+    expect(screen.getByRole("button", { name: /sign out/i })).toBeDisabled();
     expect(
       screen.getByRole("heading", { name: /engagement review/i }),
     ).toBeVisible();
@@ -111,8 +122,67 @@ describe("non-production review fixtures", () => {
     );
     expect(screen.getByText("reviewer@example.com")).toBeVisible();
     expect(
+      screen.getByRole("link", { name: /carbuyerbots admin queue/i }),
+    ).toHaveAttribute("href", "/preview/admin");
+    expect(
       screen.getByText(/workflow updates are disabled in this local review fixture/i),
     ).toBeVisible();
+  });
+
+  it("selects a portal fixture from a validated engagement search parameter", async () => {
+    render(
+      await PreviewPortalPage({
+        searchParams: Promise.resolve({
+          engagement: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: /search complete/i }),
+    ).toBeVisible();
+    const switcher = screen.getByRole("navigation", {
+      name: /your engagements/i,
+    });
+    expect(
+      within(switcher).getByRole("link", { name: /search complete/i }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("applies admin fixture search, filters, and sorting from safe search parameters", async () => {
+    const { rerender } = render(
+      await PreviewAdminPage({
+        searchParams: Promise.resolve({
+          payment: "paid",
+          q: "completed-review@example.com",
+          sort: "customer",
+          status: "completed",
+        }),
+      }),
+    );
+
+    expect(screen.getByText("completed-review@example.com")).toBeVisible();
+    expect(screen.queryByText("reviewer@example.com")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/search engagements/i)).toHaveValue(
+      "completed-review@example.com",
+    );
+    expect(screen.getByLabelText(/filter by workflow/i)).toHaveValue(
+      "completed",
+    );
+    expect(screen.getByLabelText(/filter by payment/i)).toHaveValue("paid");
+    expect(screen.getByLabelText(/sort engagements/i)).toHaveValue("customer");
+    expect(screen.getByText("Showing 1–1 of 1 engagements.")).toBeVisible();
+
+    rerender(
+      await PreviewAdminPage({
+        searchParams: Promise.resolve({ sort: "customer" }),
+      }),
+    );
+    const rows = within(
+      screen.getByRole("table", { name: /engagement review queue/i }),
+    ).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("completed-review@example.com");
+    expect(rows[2]).toHaveTextContent("reviewer@example.com");
   });
 
   it("marks every preview route noindex and nofollow", () => {
