@@ -2,9 +2,19 @@ import { redirect } from "next/navigation";
 
 import { IntakeThread } from "@/components/onboarding/intake-thread";
 import type { IntakeAnswers } from "@/components/onboarding/intake-questions";
+import {
+  normalizeRequestedEngagementId,
+  selectCustomerEngagement,
+} from "@/lib/domain/engagement-selection";
 import type { Json } from "@/lib/supabase/database.types";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
+
+type OnboardingPageProps = {
+  searchParams: Promise<{
+    engagement?: string | string[];
+  }>;
+};
 
 function draftAnswers(value: Json | null | undefined): IntakeAnswers {
   if (!value || Array.isArray(value) || typeof value !== "object") {
@@ -44,7 +54,9 @@ function finalizedBriefAnswers(
   };
 }
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: OnboardingPageProps) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
     !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
@@ -52,24 +64,28 @@ export default async function OnboardingPage() {
     return null;
   }
 
+  const params = await searchParams;
+  const requestedEngagementId = normalizeRequestedEngagementId(
+    params.engagement,
+  );
   const supabase = await createServerClient();
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) {
-    redirect("/sign-in?next=%2Fonboarding");
+    const next = requestedEngagementId
+      ? `/onboarding?engagement=${requestedEngagementId}`
+      : "/onboarding";
+    redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
-  const { data: engagement, error: engagementError } = await supabase
+  const { data: visibleEngagements, error: engagementError } = await supabase
     .from("engagements")
-    .select("id, workflow_status")
+    .select("created_at, id, workflow_status")
     .eq("user_id", user.id)
     .eq("payment_status", "paid")
-    .in("workflow_status", ["awaiting_brief", "brief_submitted"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
   if (engagementError) {
     return (
@@ -82,8 +98,21 @@ export default async function OnboardingPage() {
       </main>
     );
   }
+  const engagement = selectCustomerEngagement(
+    visibleEngagements ?? [],
+    requestedEngagementId,
+  );
   if (!engagement) {
     redirect("/portal");
+  }
+  const isEditable =
+    engagement.workflow_status === "awaiting_brief" ||
+    engagement.workflow_status === "brief_submitted";
+  if (!isEditable) {
+    redirect(`/portal?engagement=${engagement.id}`);
+  }
+  if (requestedEngagementId !== engagement.id) {
+    redirect(`/onboarding?engagement=${engagement.id}`);
   }
 
   const [draftResult, briefResult] = await Promise.all([

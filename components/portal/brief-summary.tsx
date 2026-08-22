@@ -29,6 +29,8 @@ type WorkflowStatus = Tables<"engagements">["workflow_status"];
 
 type BriefSummaryProps = {
   brief: PortalBrief | null;
+  engagementId: string;
+  paymentStatus: Tables<"engagements">["payment_status"];
   workflowStatus: WorkflowStatus;
 };
 
@@ -85,11 +87,14 @@ function listOrFallback(values: readonly string[], fallback: string): string {
 
 export function BriefSummary({
   brief,
+  engagementId,
+  paymentStatus,
   workflowStatus,
 }: BriefSummaryProps) {
   const canEdit =
-    workflowStatus === "awaiting_brief" ||
-    workflowStatus === "brief_submitted";
+    paymentStatus === "paid" &&
+    (workflowStatus === "awaiting_brief" ||
+      workflowStatus === "brief_submitted");
 
   if (!brief) {
     return (
@@ -107,7 +112,10 @@ export function BriefSummary({
           Vehicle details will appear after you submit your brief.
         </p>
         {canEdit && (
-          <Link className="tlink" href="/onboarding">
+          <Link
+            className="tlink"
+            href={`/onboarding?engagement=${engagementId}`}
+          >
             Complete brief <span aria-hidden="true">→</span>
           </Link>
         )}
@@ -166,7 +174,10 @@ export function BriefSummary({
           </h2>
         </div>
         {canEdit && (
-          <Link className="tlink" href="/onboarding">
+          <Link
+            className="tlink"
+            href={`/onboarding?engagement=${engagementId}`}
+          >
             Revise brief <span aria-hidden="true">→</span>
           </Link>
         )}

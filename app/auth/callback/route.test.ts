@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => {
     eq: vi.fn(),
     is: vi.fn(),
     limit: vi.fn(),
+    order: vi.fn(),
     select: vi.fn(),
+    then: vi.fn(),
   };
 
   return {
@@ -29,6 +31,17 @@ vi.mock("@/lib/supabase/claim", () => ({
 }));
 
 import { GET } from "./route";
+
+const awaitingEngagement = {
+  created_at: "2026-08-20T08:00:00.000Z",
+  id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+  workflow_status: "awaiting_brief",
+};
+const completedEngagement = {
+  created_at: "2026-08-22T08:00:00.000Z",
+  id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  workflow_status: "completed",
+};
 
 describe("magic-link callback", () => {
   beforeEach(() => {
@@ -54,10 +67,17 @@ describe("magic-link callback", () => {
     mocks.query.select.mockReturnValue(mocks.query);
     mocks.query.eq.mockReturnValue(mocks.query);
     mocks.query.is.mockReturnValue(mocks.query);
+    mocks.query.order.mockReturnValue(mocks.query);
     mocks.query.limit.mockResolvedValue({
-      data: [{ id: "eng_1" }],
+      data: [awaitingEngagement],
       error: null,
     });
+    mocks.query.then.mockImplementation((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [completedEngagement, awaitingEngagement],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
     mocks.from.mockReturnValue(mocks.query);
     mocks.createServerClient.mockResolvedValue({
       auth: {
@@ -83,11 +103,17 @@ describe("magic-link callback", () => {
     );
     expect(mocks.from).toHaveBeenCalledWith("engagements");
     expect(response.headers.get("location")).toBe(
-      "https://carbuyerbots.com/onboarding",
+      `https://carbuyerbots.com/onboarding?engagement=${awaitingEngagement.id}`,
     );
   });
 
   it("routes a customer with no incomplete paid brief to the portal", async () => {
+    mocks.query.then.mockImplementationOnce((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [completedEngagement],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
     mocks.query.limit.mockResolvedValueOnce({ data: [], error: null });
 
     const response = await GET(
@@ -97,8 +123,38 @@ describe("magic-link callback", () => {
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://carbuyerbots.com/portal",
+      `https://carbuyerbots.com/portal?engagement=${completedEngagement.id}`,
     );
+  });
+
+  it("carries an owned engagement selection through the callback", async () => {
+    const response = await GET(
+      new Request(
+        `https://carbuyerbots.com/auth/callback?code=auth-code&next=${encodeURIComponent(
+          `/portal?engagement=${completedEngagement.id}`,
+        )}`,
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      `https://carbuyerbots.com/portal?engagement=${completedEngagement.id}`,
+    );
+  });
+
+  it("falls back safely when the requested engagement is not owned", async () => {
+    const unownedId = "00000000-0000-4000-8000-999999999999";
+    const response = await GET(
+      new Request(
+        `https://carbuyerbots.com/auth/callback?code=auth-code&next=${encodeURIComponent(
+          `/portal?engagement=${unownedId}`,
+        )}`,
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      `https://carbuyerbots.com/onboarding?engagement=${awaitingEngagement.id}`,
+    );
+    expect(response.headers.get("location")).not.toContain(unownedId);
   });
 
   it("rejects an unverified identity without attempting a claim", async () => {

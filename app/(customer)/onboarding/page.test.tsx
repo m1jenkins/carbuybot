@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     maybeSingle: vi.fn(),
     order: vi.fn(),
     select: vi.fn(),
+    then: vi.fn(),
   };
   const draftQuery = {
     eq: vi.fn(),
@@ -71,6 +72,17 @@ const finalizedBrief = {
   year_max: 2026,
   year_min: 2024,
 };
+const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
+const submittedEngagement = {
+  created_at: "2026-08-21T08:00:00.000Z",
+  id: engagementId,
+  workflow_status: "brief_submitted",
+};
+const reviewEngagement = {
+  created_at: "2026-08-22T08:00:00.000Z",
+  id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  workflow_status: "in_review",
+};
 
 describe("OnboardingPage brief revision", () => {
   beforeEach(() => {
@@ -83,12 +95,15 @@ describe("OnboardingPage brief revision", () => {
     mocks.engagementQuery.order.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.limit.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.maybeSingle.mockResolvedValue({
-      data: {
-        id: "a6204b70-c308-40e8-b87f-30843d48cb79",
-        workflow_status: "brief_submitted",
-      },
+      data: submittedEngagement,
       error: null,
     });
+    mocks.engagementQuery.then.mockImplementation((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [submittedEngagement, reviewEngagement],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
 
     mocks.draftQuery.select.mockReturnValue(mocks.draftQuery);
     mocks.draftQuery.eq.mockReturnValue(mocks.draftQuery);
@@ -132,14 +147,18 @@ describe("OnboardingPage brief revision", () => {
   });
 
   it("maps a submitted brief into the conversational thread for revision", async () => {
-    render(await OnboardingPage());
+    render(
+      await OnboardingPage({
+        searchParams: Promise.resolve({ engagement: engagementId }),
+      }),
+    );
 
-    expect(mocks.engagementQuery.in).toHaveBeenCalledWith("workflow_status", [
-      "awaiting_brief",
-      "brief_submitted",
-    ]);
+    expect(mocks.engagementQuery.in).not.toHaveBeenCalled();
+    expect(mocks.engagementQuery.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
     expect(mocks.intakeProps).toHaveBeenCalledWith({
-      engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      engagementId,
       initialDraft: {
         budgetCents: 6_000_000,
         city: "Austin",
@@ -177,7 +196,11 @@ describe("OnboardingPage brief revision", () => {
       error: null,
     });
 
-    render(await OnboardingPage());
+    render(
+      await OnboardingPage({
+        searchParams: Promise.resolve({ engagement: engagementId }),
+      }),
+    );
 
     expect(mocks.intakeProps).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -186,5 +209,43 @@ describe("OnboardingPage brief revision", () => {
         revisionMode: true,
       }),
     );
+  });
+
+  it("redirects an invalid or unowned selection to the explicit safe default", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: "00000000-0000-4000-8000-999999999999",
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${reviewEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
+  });
+
+  it("returns a selected non-editable engagement to its matching portal", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: reviewEngagement.id,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${reviewEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,7 @@ export type PortalEngagement = Pick<
 type PortalShellProps = {
   brief: PortalBrief | null;
   engagement: PortalEngagement;
+  engagements: readonly PortalEngagement[];
   signOutAction?: () => void | Promise<void>;
   updates: readonly PortalStatusUpdate[];
 };
@@ -101,17 +102,24 @@ function paymentStatusLabel(
   )[status];
 }
 
+function formatEngagementDate(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
 export function PortalShell({
   brief,
   engagement,
+  engagements,
   signOutAction,
   updates,
 }: PortalShellProps) {
   const workflow = WORKFLOW_COPY[engagement.workflow_status];
   const paymentReference =
     engagement.stripe_checkout_session_id ??
-    engagement.stripe_payment_intent_id ??
-    engagement.id;
+    engagement.stripe_payment_intent_id;
 
   return (
     <div className="portal">
@@ -136,6 +144,28 @@ export function PortalShell({
       </header>
 
       <main id="portal-main">
+        <nav
+          className="wrap portal-switcher"
+          aria-label="Your engagements"
+        >
+          <span className="label">Your vehicle searches</span>
+          <ul>
+            {engagements.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/portal?engagement=${item.id}`}
+                  aria-current={item.id === engagement.id ? "page" : undefined}
+                >
+                  <span>{WORKFLOW_COPY[item.workflow_status].label}</span>
+                  <time dateTime={item.created_at}>
+                    {formatEngagementDate(item.created_at)}
+                  </time>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
         <section className="wrap portal-overview" aria-labelledby="portal-title">
           <div className="portal-overview__stage">
             <span className="label">Current stage</span>
@@ -176,13 +206,21 @@ export function PortalShell({
               </div>
               <div>
                 <dt>Payment reference</dt>
-                <dd className="portal-reference">{paymentReference}</dd>
+                <dd className="portal-reference">
+                  {paymentReference ?? "Unavailable"}
+                </dd>
+              </div>
+              <div>
+                <dt>Engagement reference</dt>
+                <dd className="portal-reference">{engagement.id}</dd>
               </div>
             </dl>
           </section>
 
           <BriefSummary
             brief={brief}
+            engagementId={engagement.id}
+            paymentStatus={engagement.payment_status}
             workflowStatus={engagement.workflow_status}
           />
           <StatusTimeline updates={updates} />

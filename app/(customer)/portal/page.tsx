@@ -2,7 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PortalShell } from "@/components/portal/portal-shell";
+import {
+  normalizeRequestedEngagementId,
+  orderCustomerEngagements,
+  selectCustomerEngagement,
+} from "@/lib/domain/engagement-selection";
 import { createServerClient } from "@/lib/supabase/server";
+
+type PortalPageProps = {
+  searchParams: Promise<{
+    engagement?: string | string[];
+  }>;
+};
 
 function hasSupabaseConfiguration(): boolean {
   return Boolean(
@@ -74,11 +85,15 @@ function PortalMessage({
   );
 }
 
-export default async function PortalPage() {
+export default async function PortalPage({ searchParams }: PortalPageProps) {
   if (!hasSupabaseConfiguration()) {
     return <SetupState />;
   }
 
+  const params = await searchParams;
+  const requestedEngagementId = normalizeRequestedEngagementId(
+    params.engagement,
+  );
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -86,18 +101,19 @@ export default async function PortalPage() {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect("/sign-in?next=%2Fportal");
+    const next = requestedEngagementId
+      ? `/portal?engagement=${requestedEngagementId}`
+      : "/portal";
+    redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
-  const { data: engagement, error: engagementError } = await supabase
+  const { data: visibleEngagements, error: engagementError } = await supabase
     .from("engagements")
     .select(
       "amount_cents, created_at, currency, id, payment_status, stripe_checkout_session_id, stripe_payment_intent_id, workflow_status",
     )
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
   if (engagementError) {
     return (
@@ -107,6 +123,12 @@ export default async function PortalPage() {
       />
     );
   }
+
+  const engagements = orderCustomerEngagements(visibleEngagements ?? []);
+  const engagement = selectCustomerEngagement(
+    engagements,
+    requestedEngagementId,
+  );
 
   if (!engagement) {
     return (
@@ -147,6 +169,7 @@ export default async function PortalPage() {
     <PortalShell
       brief={briefResult.data}
       engagement={engagement}
+      engagements={engagements}
       signOutAction={signOut}
       updates={updatesResult.data ?? []}
     />

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     maybeSingle: vi.fn(),
     order: vi.fn(),
     select: vi.fn(),
+    then: vi.fn(),
   };
   const briefQuery = {
     eq: vi.fn(),
@@ -52,6 +53,13 @@ const engagement = {
   stripe_payment_intent_id: "pi_test_customer_reference",
   workflow_status: "brief_submitted",
 };
+const completedEngagement = {
+  ...engagement,
+  created_at: "2026-08-22T12:00:00.000Z",
+  id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  stripe_checkout_session_id: "cs_test_completed_reference",
+  workflow_status: "completed",
+};
 
 const brief = {
   budget_cents: 6_000_000,
@@ -91,6 +99,12 @@ describe("PortalPage", () => {
       data: engagement,
       error: null,
     });
+    mocks.engagementQuery.then.mockImplementation((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [completedEngagement, engagement],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
 
     mocks.briefQuery.select.mockReturnValue(mocks.briefQuery);
     mocks.briefQuery.eq.mockReturnValue(mocks.briefQuery);
@@ -146,7 +160,11 @@ describe("PortalPage", () => {
   });
 
   it("loads the owned portal record through the authenticated RLS client", async () => {
-    render(await PortalPage());
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({ engagement: engagement.id }),
+      }),
+    );
 
     expect(mocks.createServerClient).toHaveBeenCalledTimes(1);
     expect(mocks.getUser).toHaveBeenCalledTimes(1);
@@ -156,6 +174,9 @@ describe("PortalPage", () => {
       "status_updates",
     ]);
     expect(mocks.engagementQuery.eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(mocks.engagementQuery.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
     expect(mocks.briefQuery.eq).toHaveBeenCalledWith(
       "engagement_id",
       engagement.id,
@@ -171,15 +192,29 @@ describe("PortalPage", () => {
       screen.getByRole("heading", { level: 1, name: /brief submitted/i }),
     ).toBeVisible();
     expect(screen.getByText(/2025 Genesis GV80/i)).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /brief submitted/i }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("renders a truthful state when no engagement is visible", async () => {
+    mocks.engagementQuery.then.mockImplementationOnce(
+      (onFulfilled, onRejected) =>
+        Promise.resolve({ data: [], error: null }).then(
+          onFulfilled,
+          onRejected,
+        ),
+    );
     mocks.engagementQuery.maybeSingle.mockResolvedValueOnce({
       data: null,
       error: null,
     });
 
-    render(await PortalPage());
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({}),
+      }),
+    );
 
     expect(
       screen.getByRole("heading", { name: /no active engagement/i }),
@@ -194,11 +229,65 @@ describe("PortalPage", () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-    render(await PortalPage());
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({}),
+      }),
+    );
 
     expect(
       screen.getByRole("heading", { name: /customer access is not configured/i }),
     ).toBeVisible();
     expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it("defaults to an active engagement before a newer completed one", async () => {
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(mocks.briefQuery.eq).toHaveBeenCalledWith(
+      "engagement_id",
+      engagement.id,
+    );
+    expect(
+      screen.getByRole("link", { name: /brief submitted/i }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("honors an owned selection and safely falls back from an unowned ID", async () => {
+    const { unmount } = render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: completedEngagement.id,
+        }),
+      }),
+    );
+
+    expect(mocks.briefQuery.eq).toHaveBeenLastCalledWith(
+      "engagement_id",
+      completedEngagement.id,
+    );
+    expect(
+      screen.getByRole("link", { name: /search complete/i }),
+    ).toHaveAttribute("aria-current", "page");
+
+    unmount();
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: "00000000-0000-4000-8000-999999999999",
+        }),
+      }),
+    );
+    expect(mocks.briefQuery.eq).toHaveBeenLastCalledWith(
+      "engagement_id",
+      engagement.id,
+    );
+    expect(
+      screen.queryByText("00000000-0000-4000-8000-999999999999"),
+    ).not.toBeInTheDocument();
   });
 });

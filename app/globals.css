@@ -428,6 +428,16 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
   padding:7px 0;border:0;border-bottom:1px solid currentColor;background:transparent;color:var(--ink);
   font:500 14px/1.2 'Inter',sans-serif;cursor:pointer;
 }
+.portal-switcher{padding-block:26px;border-bottom:1px solid var(--rule)}
+.portal-switcher ul{display:flex;flex-wrap:wrap;gap:0;margin-top:17px;border-top:1px solid var(--rule-2)}
+.portal-switcher li{flex:1 1 190px;border-bottom:1px solid var(--rule-2)}
+.portal-switcher a{
+  min-height:64px;padding:13px 16px 12px 0;display:flex;flex-direction:column;justify-content:center;
+  text-decoration:none;border-top:2px solid transparent;
+}
+.portal-switcher a[aria-current=page]{border-top-color:var(--ink)}
+.portal-switcher a span{font-size:14px;font-weight:500}
+.portal-switcher a time{margin-top:3px;font-size:12px;color:var(--meta);font-variant-numeric:tabular-nums}
 .portal-overview{
   padding-block:clamp(64px,9vw,124px);display:grid;
   grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:clamp(36px,8vw,128px);
@@ -445,7 +455,7 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .portal-section-heading--action>div{display:grid;gap:14px}
 .portal-payment__details,.portal-brief__details{margin:clamp(30px,4vw,48px) 0 0}
 .portal-payment__details{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.5fr) minmax(0,1.5fr);
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.5fr) repeat(2,minmax(0,1.25fr));
   border-top:1px solid var(--rule-2);
 }
 .portal-payment__details>div,.portal-brief__details>div{
@@ -589,6 +599,8 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
 
 /* ── responsive ────────────────────────────────────────────────────── */
 @media(max-width:1000px){
+  .portal-payment__details{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .portal-payment__details>div:nth-child(odd){padding-left:0;border-left:0}
   .hdr nav{display:none}
   .stmt,.ev,.price{grid-template-columns:1fr}
   .stmt__l,.ev__rail{position:static}

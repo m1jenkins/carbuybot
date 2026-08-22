@@ -250,7 +250,9 @@ describe("IntakeThread", () => {
     expect(
       mocks.saveAnswer.mock.invocationCallOrder[0],
     ).toBeLessThan(mocks.submitBrief.mock.invocationCallOrder[0]);
-    expect(mocks.replace).toHaveBeenCalledWith("/portal");
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/portal?engagement=eng_1",
+    );
   });
 
   it("retains committed consent and offers a retry when finalization fails", async () => {
@@ -304,7 +306,9 @@ describe("IntakeThread", () => {
     );
     await waitFor(() => {
       expect(mocks.submitBrief).toHaveBeenCalledTimes(2);
-      expect(mocks.replace).toHaveBeenCalledWith("/portal");
+      expect(mocks.replace).toHaveBeenCalledWith(
+        "/portal?engagement=eng_1",
+      );
     });
     expect(mocks.saveAnswer).toHaveBeenCalledTimes(1);
   });

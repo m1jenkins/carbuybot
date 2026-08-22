@@ -13,6 +13,12 @@ const engagement = {
   stripe_payment_intent_id: "pi_test_customer_reference",
   workflow_status: "brief_submitted" as const,
 };
+const completedEngagement = {
+  ...engagement,
+  created_at: "2026-08-22T12:00:00.000Z",
+  id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  workflow_status: "completed" as const,
+};
 
 const brief = {
   budget_cents: 6_000_000,
@@ -73,6 +79,7 @@ describe("PortalShell", () => {
       <PortalShell
         brief={brief}
         engagement={engagement}
+        engagements={[engagement, completedEngagement]}
         signOutAction={vi.fn()}
         updates={updates}
       />,
@@ -95,6 +102,7 @@ describe("PortalShell", () => {
       <PortalShell
         brief={brief}
         engagement={engagement}
+        engagements={[engagement, completedEngagement]}
         updates={updates}
       />,
     );
@@ -116,18 +124,41 @@ describe("PortalShell", () => {
       <PortalShell
         brief={brief}
         engagement={engagement}
+        engagements={[engagement, completedEngagement]}
         updates={updates}
       />,
     );
 
     expect(
       screen.getByRole("link", { name: /revise brief/i }),
-    ).toHaveAttribute("href", "/onboarding");
+    ).toHaveAttribute(
+      "href",
+      `/onboarding?engagement=${engagement.id}`,
+    );
 
     rerender(
       <PortalShell
         brief={brief}
         engagement={{ ...engagement, workflow_status: "in_review" }}
+        engagements={[
+          { ...engagement, workflow_status: "in_review" },
+          completedEngagement,
+        ]}
+        updates={updates}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: /revise brief/i }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <PortalShell
+        brief={brief}
+        engagement={{ ...engagement, payment_status: "refunded" }}
+        engagements={[
+          { ...engagement, payment_status: "refunded" },
+          completedEngagement,
+        ]}
         updates={updates}
       />,
     );
@@ -141,6 +172,10 @@ describe("PortalShell", () => {
       <PortalShell
         brief={null}
         engagement={{ ...engagement, workflow_status: "awaiting_brief" }}
+        engagements={[
+          { ...engagement, workflow_status: "awaiting_brief" },
+          completedEngagement,
+        ]}
         updates={[]}
       />,
     );
@@ -148,12 +183,64 @@ describe("PortalShell", () => {
     expect(screen.getByText(/complete your vehicle brief/i)).toBeVisible();
     expect(
       screen.getByRole("link", { name: /complete brief/i }),
-    ).toHaveAttribute("href", "/onboarding");
+    ).toHaveAttribute(
+      "href",
+      `/onboarding?engagement=${engagement.id}`,
+    );
     expect(
       screen.getByText(/no customer updates have been posted yet/i),
     ).toBeVisible();
     expect(
       screen.getByText(/vehicle details will appear after you submit/i),
     ).toBeVisible();
+  });
+
+  it("lists every owned engagement and marks the selected one", () => {
+    render(
+      <PortalShell
+        brief={brief}
+        engagement={engagement}
+        engagements={[engagement, completedEngagement]}
+        updates={updates}
+      />,
+    );
+
+    const switcher = screen.getByRole("navigation", {
+      name: /your engagements/i,
+    });
+    const links = within(switcher).getAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute(
+      "href",
+      `/portal?engagement=${engagement.id}`,
+    );
+    expect(links[0]).toHaveAttribute("aria-current", "page");
+    expect(links[1]).toHaveAttribute(
+      "href",
+      `/portal?engagement=${completedEngagement.id}`,
+    );
+    expect(links[1]).not.toHaveAttribute("aria-current");
+  });
+
+  it("separates unavailable payment references from the engagement reference", () => {
+    render(
+      <PortalShell
+        brief={brief}
+        engagement={{
+          ...engagement,
+          stripe_checkout_session_id: null,
+          stripe_payment_intent_id: null,
+        }}
+        engagements={[engagement]}
+        updates={updates}
+      />,
+    );
+
+    expect(screen.getByText("Payment reference").nextElementSibling).toHaveTextContent(
+      "Unavailable",
+    );
+    expect(
+      screen.getByText("Engagement reference").nextElementSibling,
+    ).toHaveTextContent(engagement.id);
   });
 });

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+import {
+  normalizeRequestedEngagementId,
+  selectCustomerEngagement,
+} from "@/lib/domain/engagement-selection";
 import { claimPaidEngagements } from "@/lib/supabase/claim";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -85,22 +89,43 @@ export async function GET(request: Request) {
 
     await claimPaidEngagements(user.id, user.email);
 
-    const { data: incomplete, error: engagementError } = await supabase
+    const { data: engagements, error: engagementError } = await supabase
       .from("engagements")
-      .select("id")
+      .select("created_at, id, workflow_status")
       .eq("user_id", user.id)
       .eq("payment_status", "paid")
-      .eq("workflow_status", "awaiting_brief")
-      .is("onboarding_completed_at", null)
-      .limit(1);
+      .order("created_at", { ascending: false });
 
     if (engagementError) {
       return signInRedirect(requestUrl, "auth", next);
     }
 
-    return NextResponse.redirect(
-      new URL(incomplete?.length ? "/onboarding" : "/portal", requestUrl.origin),
+    const requestedDestination = new URL(next, requestUrl.origin);
+    const requestedEngagementId = normalizeRequestedEngagementId(
+      requestedDestination.searchParams.get("engagement") ?? undefined,
     );
+    const engagement = selectCustomerEngagement(
+      engagements ?? [],
+      requestedEngagementId,
+    );
+    if (!engagement) {
+      return NextResponse.redirect(new URL("/portal", requestUrl.origin));
+    }
+
+    const requestedOwnedEngagement =
+      requestedEngagementId === engagement.id;
+    const editable =
+      engagement.workflow_status === "awaiting_brief" ||
+      engagement.workflow_status === "brief_submitted";
+    const route =
+      requestedOwnedEngagement && requestedDestination.pathname === "/portal"
+        ? "/portal"
+        : editable
+          ? "/onboarding"
+          : "/portal";
+    const destination = new URL(route, requestUrl.origin);
+    destination.searchParams.set("engagement", engagement.id);
+    return NextResponse.redirect(destination);
   } catch {
     return signInRedirect(requestUrl, "auth", next);
   }

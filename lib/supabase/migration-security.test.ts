@@ -77,6 +77,21 @@ const normalizedBriefRevisionsSql = briefRevisionsMigration.replace(
   /\s+/g,
   " ",
 );
+const briefRevisionConsistencyMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_brief_revision_consistency.sql"));
+const briefRevisionConsistencyMigration = briefRevisionConsistencyMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        briefRevisionConsistencyMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
+const normalizedBriefRevisionConsistencySql =
+  briefRevisionConsistencyMigration.replace(/\s+/g, " ");
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -437,6 +452,60 @@ describe("submitted brief revision security", () => {
     );
     expect(normalizedBriefRevisionsSql).toContain(
       "on conflict (engagement_id) do nothing",
+    );
+  });
+});
+
+describe("brief revision consistency hardening", () => {
+  it("adds a server-owned baseline and monotonic progress index", () => {
+    expect(normalizedBriefRevisionConsistencySql).toContain(
+      "add column baseline_answers jsonb",
+    );
+    expect(normalizedBriefRevisionConsistencySql).toContain(
+      "add column progress_index smallint not null default -1",
+    );
+    expect(normalizedBriefRevisionConsistencySql).not.toContain(
+      "grant update (baseline_answers",
+    );
+    expect(normalizedBriefRevisionConsistencySql).toContain(
+      "baseline_answers = pg_catalog.jsonb_build_object(",
+    );
+  });
+
+  it("advances the cursor only for a newer server-derived question index", () => {
+    const saveFunction = normalizedBriefRevisionConsistencySql.match(
+      /create or replace function public\.save_brief_answer\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(saveFunction).toBeDefined();
+    expect(saveFunction).not.toContain("security definer");
+    expect(saveFunction).toContain(
+      "v_progress_index := case p_question_id",
+    );
+    expect(saveFunction).toContain(
+      "when v_progress_index > brief_drafts.progress_index",
+    );
+    expect(saveFunction).toContain(
+      "greatest( brief_drafts.progress_index, v_progress_index )",
+    );
+  });
+
+  it("emits visible activity only when the locked normalized brief changed", () => {
+    const finalizationFunction = normalizedBriefRevisionConsistencySql.match(
+      /create or replace function public\.finalize_vehicle_brief\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(finalizationFunction).toBeDefined();
+    expect(finalizationFunction).not.toContain("security definer");
+    expect(finalizationFunction).toContain(
+      "v_draft.baseline_answers is distinct from v_normalized_answers",
+    );
+    expect(finalizationFunction).toContain(
+      "if target_engagement.workflow_status = 'awaiting_brief' or v_has_changes then",
+    );
+    expect(finalizationFunction).toContain(
+      "baseline_answers = v_normalized_answers",
+    );
+    expect(normalizedBriefRevisionConsistencySql).toContain(
+      "grant execute on function public.finalize_vehicle_brief(uuid, uuid) to service_role;",
     );
   });
 });

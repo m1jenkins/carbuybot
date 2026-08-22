@@ -56,23 +56,29 @@ export type Database = {
       brief_drafts: {
         Row: {
           answers: Json;
+          baseline_answers: Json | null;
           created_at: string;
           current_question_id: string | null;
           engagement_id: string;
+          progress_index: number;
           updated_at: string;
         };
         Insert: {
           answers?: Json;
+          baseline_answers?: Json | null;
           created_at?: string;
           current_question_id?: string | null;
           engagement_id: string;
+          progress_index?: number;
           updated_at?: string;
         };
         Update: {
           answers?: Json;
+          baseline_answers?: Json | null;
           created_at?: string;
           current_question_id?: string | null;
           engagement_id?: string;
+          progress_index?: number;
           updated_at?: string;
         };
         Relationships: [

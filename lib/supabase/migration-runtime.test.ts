@@ -47,6 +47,19 @@ const briefRevisionsMigration = briefRevisionsMigrationName
       "utf8",
     )
   : "";
+const briefRevisionConsistencyMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_brief_revision_consistency.sql"));
+const briefRevisionConsistencyMigration = briefRevisionConsistencyMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        briefRevisionConsistencyMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
 
 const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const missingEngagementId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
@@ -321,38 +334,43 @@ async function insertVehicleBriefDirectly(db: PGlite) {
   );
 }
 
+async function bootstrapThroughIntakeHardening(db: PGlite) {
+  await db.exec(`
+    create schema auth;
+    create table auth.users (
+      id uuid primary key
+    );
+    create or replace function auth.uid()
+    returns uuid
+    language sql
+    stable
+    as $$
+      select nullif(
+        pg_catalog.current_setting('request.jwt.claim.sub', true),
+        ''
+      )::uuid
+    $$;
+
+    create role anon;
+    create role authenticated;
+    create role service_role bypassrls;
+    grant usage on schema auth to authenticated, service_role;
+    grant execute on function auth.uid() to authenticated, service_role;
+  `);
+  await db.exec(baseMigration);
+  await db.exec(fulfillmentMigration);
+  await db.exec(intakeMigration);
+  await db.exec(intakeHardeningMigration);
+}
+
 describe("Stripe fulfillment migration runtime", () => {
   let db: PGlite;
 
   beforeEach(async () => {
     db = new PGlite();
-    await db.exec(`
-      create schema auth;
-      create table auth.users (
-        id uuid primary key
-      );
-      create or replace function auth.uid()
-      returns uuid
-      language sql
-      stable
-      as $$
-        select nullif(
-          pg_catalog.current_setting('request.jwt.claim.sub', true),
-          ''
-        )::uuid
-      $$;
-
-      create role anon;
-      create role authenticated;
-      create role service_role bypassrls;
-      grant usage on schema auth to authenticated, service_role;
-      grant execute on function auth.uid() to authenticated, service_role;
-    `);
-    await db.exec(baseMigration);
-    await db.exec(fulfillmentMigration);
-    await db.exec(intakeMigration);
-    await db.exec(intakeHardeningMigration);
+    await bootstrapThroughIntakeHardening(db);
     await db.exec(briefRevisionsMigration);
+    await db.exec(briefRevisionConsistencyMigration);
   });
 
   afterEach(async () => {
@@ -555,6 +573,70 @@ describe("Stripe fulfillment migration runtime", () => {
     });
   });
 
+  it("keeps the furthest cursor when saves finish in reverse question order", async () => {
+    await insertClaimedPaidEngagement(db);
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "model", "GV80", "yearMin"),
+    );
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "make", "Genesis", "model"),
+    );
+
+    const draft = await db.query<{
+      answers: { make: string; model: string };
+      current_question_id: string;
+      progress_index: number;
+    }>(
+      `
+        select answers, current_question_id, progress_index
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(draft.rows[0]).toEqual({
+      answers: { make: "Genesis", model: "GV80" },
+      current_question_id: "yearMin",
+      progress_index: 2,
+    });
+  });
+
+  it("merges a late Back edit without reversing the finalized consent cursor", async () => {
+    await insertClaimedPaidEngagement(db);
+    const preConsentAnswers: Record<string, unknown> = {
+      ...completeDraftAnswers,
+    };
+    delete preConsentAnswers.consent;
+    await insertDraft(db, preConsentAnswers, "consent");
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "consent", true, null),
+    );
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "make", "Toyota", "model"),
+    );
+
+    const draft = await db.query<{
+      current_question_id: string | null;
+      make: string;
+      progress_index: number;
+    }>(
+      `
+        select
+          current_question_id,
+          answers ->> 'make' as make,
+          progress_index
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(draft.rows[0]).toEqual({
+      current_question_id: null,
+      make: "Toyota",
+      progress_index: 19,
+    });
+  });
+
   it("rejects an inverted year range without changing or advancing the draft", async () => {
     await insertClaimedPaidEngagement(db);
     await asAuthenticatedUser(db, userId, () =>
@@ -666,6 +748,45 @@ describe("Stripe fulfillment migration runtime", () => {
     expect(state.rows[0]?.onboarding_completed_at).not.toBeNull();
   });
 
+  it("emits one submitted event for concurrent and retried unchanged finalization", async () => {
+    await insertClaimedPaidEngagement(db);
+    await insertDraft(db, completeDraftAnswers);
+
+    await asRole(db, "service_role", () =>
+      Promise.all([finalizeBrief(db), finalizeBrief(db)]),
+    );
+    await asRole(db, "service_role", () => finalizeBrief(db));
+
+    const state = await db.query<{
+      baseline_matches: boolean;
+      submitted_count: number;
+      updated_count: number;
+    }>(
+      `
+        select
+          d.baseline_answers = d.answers as baseline_matches,
+          (
+            select count(*)::int
+            from public.status_updates
+            where title = 'Brief submitted'
+          ) as submitted_count,
+          (
+            select count(*)::int
+            from public.status_updates
+            where title = 'Brief updated'
+          ) as updated_count
+        from public.brief_drafts d
+        where d.engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(state.rows[0]).toEqual({
+      baseline_matches: true,
+      submitted_count: 1,
+      updated_count: 0,
+    });
+  });
+
   it("rolls back every finalization write when the locked draft is invalid", async () => {
     await insertClaimedPaidEngagement(db);
     await insertDraft(db, { ...completeDraftAnswers, postalCode: "12" });
@@ -752,6 +873,7 @@ describe("Stripe fulfillment migration runtime", () => {
     ).resolves.toBe(true);
 
     const revised = await db.query<{
+      baseline_matches: boolean;
       draft_count: number;
       make: string;
       submitted_count: number;
@@ -762,6 +884,7 @@ describe("Stripe fulfillment migration runtime", () => {
         select
           e.workflow_status,
           b.make,
+          d.baseline_answers = d.answers as baseline_matches,
           (select count(*)::int from public.brief_drafts) as draft_count,
           (
             select count(*)::int
@@ -775,11 +898,13 @@ describe("Stripe fulfillment migration runtime", () => {
           ) as updated_count
         from public.engagements e
         join public.vehicle_briefs b on b.engagement_id = e.id
+        join public.brief_drafts d on d.engagement_id = e.id
         where e.id = $1
       `,
       [engagementId],
     );
     expect(revised.rows[0]).toEqual({
+      baseline_matches: true,
       draft_count: 1,
       make: "Toyota",
       submitted_count: 1,
@@ -802,6 +927,56 @@ describe("Stripe fulfillment migration runtime", () => {
         saveBriefAnswer(db, "make", "Blocked", null),
       ),
     ).rejects.toThrow(/owned paid engagement/i);
+  });
+
+  it("upgrades a pre-existing submitted brief into an editable draft with a baseline", async () => {
+    const upgradeDb = new PGlite();
+    try {
+      await bootstrapThroughIntakeHardening(upgradeDb);
+      await insertClaimedPaidEngagement(upgradeDb);
+      await upgradeDb.query(
+        `
+          update public.engagements
+          set workflow_status = 'brief_submitted',
+              onboarding_completed_at = pg_catalog.now()
+          where id = $1
+        `,
+        [engagementId],
+      );
+      await insertVehicleBriefDirectly(upgradeDb);
+
+      await upgradeDb.exec(briefRevisionsMigration);
+      await upgradeDb.exec(briefRevisionConsistencyMigration);
+
+      const upgraded = await upgradeDb.query<{
+        answers_match: boolean;
+        baseline_make: string;
+        current_question_id: string | null;
+        draft_make: string;
+        progress_index: number;
+      }>(
+        `
+          select
+            answers = baseline_answers as answers_match,
+            answers ->> 'make' as draft_make,
+            baseline_answers ->> 'make' as baseline_make,
+            current_question_id,
+            progress_index
+          from public.brief_drafts
+          where engagement_id = $1
+        `,
+        [engagementId],
+      );
+      expect(upgraded.rows[0]).toEqual({
+        answers_match: true,
+        baseline_make: "Genesis",
+        current_question_id: null,
+        draft_make: "Genesis",
+        progress_index: 19,
+      });
+    } finally {
+      await upgradeDb.close();
+    }
   });
 
   it("lets an owner select only customer-visible status history", async () => {

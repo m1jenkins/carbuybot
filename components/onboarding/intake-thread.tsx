@@ -164,7 +164,9 @@ export function IntakeThread({
           setError(submitted.error);
           return;
         }
-        router.replace("/portal");
+        router.replace(
+          `/portal?engagement=${encodeURIComponent(engagementId)}`,
+        );
         return;
       }
 
@@ -194,7 +196,9 @@ export function IntakeThread({
         setError(submitted.error);
         return;
       }
-      router.replace("/portal");
+      router.replace(
+        `/portal?engagement=${encodeURIComponent(engagementId)}`,
+      );
     });
   }
 
