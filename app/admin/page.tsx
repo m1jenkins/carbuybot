@@ -4,9 +4,15 @@ import type {
   AdminVehicleSummary,
 } from "@/components/admin/types";
 import {
+  ADMIN_QUEUE_PAGE_SIZE,
+  loadAdminEngagementPage,
+  loadWorkflowCounts,
+} from "@/lib/admin/engagement-queries";
+import {
   hasSupabaseConfiguration,
   requireAdmin,
 } from "@/lib/auth/admin";
+import { parseAdminQueueSearchParams } from "@/lib/domain/admin-query";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -64,19 +70,31 @@ function normalizeQueueEngagement(
   };
 }
 
-export default async function AdminPage() {
+type AdminPageProps = {
+  searchParams?: Promise<
+    Record<string, string | string[] | undefined>
+  >;
+};
+
+export default async function AdminPage({
+  searchParams = Promise.resolve({}),
+}: AdminPageProps = {}) {
   if (!hasSupabaseConfiguration()) return null;
 
   await requireAdmin();
   const supabase = await createServerClient();
-  const { data, error } = await supabase
-    .from("engagements")
-    .select(
-      "amount_cents, created_at, currency, customer_email, id, payment_status, updated_at, workflow_status, profiles!engagements_user_id_fkey(full_name), vehicle_briefs(city, make, model, state, year_max, year_min)",
-    )
-    .order("created_at", { ascending: false });
+  const query = parseAdminQueueSearchParams(await searchParams);
+  const [countsResult, pageResult] = await Promise.all([
+    loadWorkflowCounts(supabase),
+    loadAdminEngagementPage(supabase, query),
+  ]);
 
-  if (error) {
+  if (
+    countsResult.error ||
+    !countsResult.counts ||
+    pageResult.error ||
+    typeof pageResult.count !== "number"
+  ) {
     return (
       <main id="admin-main" className="wrap admin-message">
         <span className="label">Operations</span>
@@ -88,8 +106,20 @@ export default async function AdminPage() {
     );
   }
 
-  const engagements = ((data ?? []) as unknown as RawQueueEngagement[]).map(
-    normalizeQueueEngagement,
+  const engagements = (
+    (pageResult.data ?? []) as unknown as RawQueueEngagement[]
+  ).map(normalizeQueueEngagement);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(pageResult.count / ADMIN_QUEUE_PAGE_SIZE),
   );
-  return <AdminOverview engagements={engagements} />;
+  return (
+    <AdminOverview
+      counts={countsResult.counts}
+      engagements={engagements}
+      filteredCount={pageResult.count}
+      pageCount={pageCount}
+      query={query}
+    />
+  );
 }

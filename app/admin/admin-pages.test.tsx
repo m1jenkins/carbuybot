@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
   const updatesQuery = {
     eq: vi.fn(),
     order: vi.fn(),
+    range: vi.fn(),
     select: vi.fn(),
   };
 
@@ -27,6 +28,8 @@ const mocks = vi.hoisted(() => {
     createServerClient: vi.fn(),
     engagementQuery,
     from: vi.fn(),
+    loadAdminEngagementPage: vi.fn(),
+    loadWorkflowCounts: vi.fn(),
     notFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND");
     }),
@@ -55,6 +58,11 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: mocks.createServerClient,
+}));
+vi.mock("@/lib/admin/engagement-queries", () => ({
+  ADMIN_QUEUE_PAGE_SIZE: 25,
+  loadAdminEngagementPage: mocks.loadAdminEngagementPage,
+  loadWorkflowCounts: mocks.loadWorkflowCounts,
 }));
 vi.mock("./engagements/[id]/actions", () => ({
   updateEngagementStatus: mocks.updateEngagementStatus,
@@ -110,6 +118,17 @@ const brief = {
   year_min: 2024,
 };
 
+const counts = {
+  awaiting_brief: 1_100,
+  brief_submitted: 1_250,
+  cancelled: 75,
+  completed: 90,
+  in_review: 800,
+  negotiating: 300,
+  offers_ready: 120,
+  searching: 2_000,
+};
+
 describe("admin route data access", () => {
   const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const originalKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -127,6 +146,15 @@ describe("admin route data access", () => {
       data: [engagement],
       error: null,
     });
+    mocks.loadWorkflowCounts.mockResolvedValue({
+      counts,
+      error: null,
+    });
+    mocks.loadAdminEngagementPage.mockResolvedValue({
+      count: 81,
+      data: [engagement],
+      error: null,
+    });
     mocks.engagementQuery.select.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.eq.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.maybeSingle.mockResolvedValue({
@@ -141,7 +169,9 @@ describe("admin route data access", () => {
     });
     mocks.updatesQuery.select.mockReturnValue(mocks.updatesQuery);
     mocks.updatesQuery.eq.mockReturnValue(mocks.updatesQuery);
-    mocks.updatesQuery.order.mockResolvedValue({
+    mocks.updatesQuery.order.mockReturnValue(mocks.updatesQuery);
+    mocks.updatesQuery.range.mockResolvedValue({
+      count: 45,
       data: [
         {
           author_id: "admin-1",
@@ -205,23 +235,80 @@ describe("admin route data access", () => {
   });
 
   it("loads the queue through the authenticated RLS client", async () => {
-    mocks.from.mockReturnValueOnce(mocks.queueQuery);
-
-    render(await AdminPage());
+    render(
+      await AdminPage({
+        searchParams: Promise.resolve({
+          page: "2",
+          payment: "paid",
+          q: "Buyer@Example.com",
+          sort: "customer",
+          status: "searching",
+        }),
+      }),
+    );
 
     expect(mocks.requireAdmin).toHaveBeenCalledOnce();
     expect(mocks.createServerClient).toHaveBeenCalledOnce();
-    expect(mocks.from).toHaveBeenCalledWith("engagements");
-    expect(mocks.queueQuery.order).toHaveBeenCalledWith("created_at", {
+    expect(mocks.loadWorkflowCounts).toHaveBeenCalledOnce();
+    expect(mocks.loadAdminEngagementPage).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        emailPattern: "buyer@example.com",
+        page: 2,
+        payment: "paid",
+        search: "buyer@example.com",
+        searchId: null,
+        sort: "customer",
+        status: "searching",
+      },
+    );
+    expect(screen.getByText("1,250")).toBeVisible();
+    expect(screen.getByText("Showing 26–26 of 81 engagements.")).toBeVisible();
+    expect(screen.getByRole("link", { name: /next page/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("page=3"),
+    );
+    expect(screen.getByRole("link", { name: /Genesis GV80/i })).toBeVisible();
+  });
+
+  it("loads an exact, bounded status-history page with older/newer controls", async () => {
+    render(
+      await EngagementPage({
+        params: Promise.resolve({ id }),
+        searchParams: Promise.resolve({ historyPage: "2" }),
+      }),
+    );
+
+    expect(mocks.updatesQuery.select).toHaveBeenCalledWith(expect.any(String), {
+      count: "exact",
+    });
+    expect(mocks.updatesQuery.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     });
-    expect(screen.getByRole("link", { name: /Genesis GV80/i })).toBeVisible();
+    expect(mocks.updatesQuery.order).toHaveBeenCalledWith("id", {
+      ascending: false,
+    });
+    expect(mocks.updatesQuery.range).toHaveBeenCalledWith(20, 39);
+    expect(screen.getByText("45 updates total")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /return to newer updates/i }),
+    ).toHaveAttribute(
+      "href",
+      `/admin/engagements/${id}?historyPage=1#admin-history-title`,
+    );
+    expect(
+      screen.getByRole("link", { name: /load older updates/i }),
+    ).toHaveAttribute(
+      "href",
+      `/admin/engagements/${id}?historyPage=3#admin-history-title`,
+    );
   });
 
   it("loads full detail and history through the authenticated RLS client", async () => {
     render(
       await EngagementPage({
         params: Promise.resolve({ id }),
+        searchParams: Promise.resolve({}),
       }),
     );
 

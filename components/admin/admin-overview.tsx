@@ -1,22 +1,30 @@
 import { workflowLabels } from "@/lib/domain/admin-engagement";
+import type { AdminQueueQuery } from "@/lib/domain/admin-query";
 import { workflowStatuses } from "@/lib/domain/engagement";
+import type { WorkflowStatus } from "@/lib/domain/engagement";
 
 import { EngagementTable } from "./engagement-table";
 import type { AdminQueueEngagement } from "./types";
 
 type AdminOverviewProps = {
+  counts: Record<WorkflowStatus, number>;
   engagements: readonly AdminQueueEngagement[];
+  filteredCount: number;
+  pageCount: number;
+  query: AdminQueueQuery;
 };
 
-export function AdminOverview({ engagements }: AdminOverviewProps) {
-  const counts = Object.fromEntries(
-    workflowStatuses.map((status) => [
-      status,
-      engagements.filter(
-        (engagement) => engagement.workflowStatus === status,
-      ).length,
-    ]),
-  ) as Record<AdminQueueEngagement["workflowStatus"], number>;
+export function AdminOverview({
+  counts,
+  engagements,
+  filteredCount,
+  pageCount,
+  query,
+}: AdminOverviewProps) {
+  const totalCount = workflowStatuses.reduce(
+    (total, status) => total + counts[status],
+    0,
+  );
 
   return (
     <main id="admin-main" className="admin-main">
@@ -39,13 +47,17 @@ export function AdminOverview({ engagements }: AdminOverviewProps) {
             <span className="label" id="admin-queue-title">
               Workflow queue
             </span>
-            <span className="cap num">{engagements.length} total</span>
+            <span className="cap num">
+              {totalCount.toLocaleString("en-US")} total
+            </span>
           </div>
           <ul aria-label="Workflow queue counts">
             {workflowStatuses.map((status) => (
               <li key={status}>
                 <span>{workflowLabels[status]}</span>
-                <strong className="num">{counts[status]}</strong>
+                <strong className="num">
+                  {counts[status].toLocaleString("en-US")}
+                </strong>
               </li>
             ))}
           </ul>
@@ -53,7 +65,12 @@ export function AdminOverview({ engagements }: AdminOverviewProps) {
       </section>
 
       <div className="wrap admin-record">
-        <EngagementTable engagements={engagements} />
+        <EngagementTable
+          engagements={engagements}
+          filteredCount={filteredCount}
+          pageCount={pageCount}
+          query={query}
+        />
       </div>
     </main>
   );

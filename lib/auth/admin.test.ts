@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const adminQuery = {
@@ -35,8 +35,13 @@ vi.mock("@/lib/supabase/server", () => ({
 import { requireAdmin } from "./admin";
 
 describe("requireAdmin", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const originalKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
     mocks.adminQuery.select.mockReturnValue(mocks.adminQuery);
     mocks.adminQuery.eq.mockReturnValue(mocks.adminQuery);
     mocks.adminQuery.maybeSingle.mockResolvedValue({
@@ -58,6 +63,22 @@ describe("requireAdmin", () => {
       auth: { getUser: mocks.getUser },
       from: mocks.from,
     });
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = originalKey;
+  });
+
+  it("fails safely before creating a client when configuration is missing", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    await expect(requireAdmin()).rejects.toThrow(
+      "Admin access is not configured.",
+    );
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+    expect(mocks.getUser).not.toHaveBeenCalled();
   });
 
   it("uses a fresh user check and the caller's active admin assignment", async () => {

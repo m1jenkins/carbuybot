@@ -20,6 +20,9 @@ type StatusActionResult = { ok: true } | { ok: false; error: string };
 type EngagementReviewProps = {
   brief: AdminBrief | null;
   engagement: AdminEngagementDetail;
+  historyPage: number;
+  historyPageCount: number;
+  historyTotal: number;
   statusAction: (input: {
     engagementId: string;
     nextStatus: WorkflowStatus;
@@ -89,9 +92,16 @@ function vehicleTitle(
     .join(" ");
 }
 
+function historyPageHref(engagementId: string, page: number): string {
+  return `/admin/engagements/${engagementId}?historyPage=${page}#admin-history-title`;
+}
+
 export function EngagementReview({
   brief,
   engagement,
+  historyPage,
+  historyPageCount,
+  historyTotal,
   statusAction,
   updates,
 }: EngagementReviewProps) {
@@ -318,9 +328,15 @@ export function EngagementReview({
                 Status history
               </h2>
             </div>
+            <p className="cap">
+              {historyTotal.toLocaleString("en-US")} updates total
+            </p>
           </div>
           {updates.length > 0 ? (
-            <ol className="admin-history" aria-label="Complete status history">
+            <ol
+              className="admin-history"
+              aria-label={`Status history page ${historyPage}`}
+            >
               {updates.map((update) => (
                 <li key={update.id}>
                   <div>
@@ -344,6 +360,32 @@ export function EngagementReview({
           ) : (
             <p className="admin-empty">No status activity has been recorded.</p>
           )}
+          {historyPageCount > 1 ? (
+            <nav className="admin-pagination" aria-label="Status history pages">
+              {historyPage > 1 ? (
+                <Link
+                  href={historyPageHref(engagement.id, historyPage - 1)}
+                >
+                  Return to newer updates
+                </Link>
+              ) : (
+                <span aria-disabled="true">Return to newer updates</span>
+              )}
+              <span aria-current="page">
+                Page {historyPage.toLocaleString("en-US")} of{" "}
+                {historyPageCount.toLocaleString("en-US")}
+              </span>
+              {historyPage < historyPageCount ? (
+                <Link
+                  href={historyPageHref(engagement.id, historyPage + 1)}
+                >
+                  Load older updates
+                </Link>
+              ) : (
+                <span aria-disabled="true">Load older updates</span>
+              )}
+            </nav>
+          ) : null}
         </section>
 
         <section aria-labelledby="admin-update-title">

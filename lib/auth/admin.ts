@@ -20,6 +20,10 @@ export function hasSupabaseConfiguration(): boolean {
 }
 
 export async function requireAdmin(): Promise<AdminIdentity> {
+  if (!hasSupabaseConfiguration()) {
+    throw new Error("Admin access is not configured.");
+  }
+
   const supabase = await createServerClient();
   const {
     data: { user },

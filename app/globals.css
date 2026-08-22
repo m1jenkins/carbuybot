@@ -525,7 +525,7 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .admin-section-heading>div{display:grid;gap:14px}
 .admin-controls{
   margin-top:32px;padding-block:18px;border-block:1px solid var(--rule);
-  display:grid;grid-template-columns:minmax(230px,1.4fr) repeat(3,minmax(150px,.7fr));gap:1px;
+  display:grid;grid-template-columns:minmax(230px,1.4fr) repeat(3,minmax(150px,.7fr)) auto;gap:1px;
   background:var(--rule);
 }
 .admin-controls label,.admin-status-form label{
@@ -543,6 +543,13 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .admin-controls input:focus,.admin-controls select:focus,.admin-status-form input:focus,.admin-status-form select:focus,.admin-status-form textarea:focus{
   outline:2px solid var(--ink);outline-offset:3px;
 }
+.admin-filter-submit{
+  align-self:end;min-height:42px;padding:0 18px;border:1px solid var(--ink);border-radius:0;
+  background:var(--ink);color:var(--paper);font:500 13px/1 'Inter',sans-serif;cursor:pointer;
+}
+.admin-filter-submit:hover{background:#25292B}
+.admin-filter-submit:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.admin-list-summary{margin-top:20px;color:var(--meta);font-size:12px;line-height:1.4}
 .admin-table{margin-top:10px}
 .admin-table table{width:100%;border-collapse:collapse;text-align:left}
 .admin-table caption{
@@ -619,6 +626,14 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
 .admin-status-form__submit>div{min-height:48px;display:flex;align-items:center}
 .admin-form-error,.admin-form-success{max-width:58ch;font-size:13px;line-height:1.5}
 .admin-form-error{font-weight:500}
+.admin-pagination{
+  margin-top:28px;padding-top:18px;border-top:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  font-size:13px;line-height:1.4;
+}
+.admin-pagination a{font-weight:500;text-underline-offset:4px}
+.admin-pagination span{color:var(--meta)}
+.admin-pagination span[aria-disabled=true]{opacity:.65}
 
 /* ── conversational intake ─────────────────────────────────────────── */
 .intake{
@@ -768,6 +783,7 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .admin-section-heading{grid-template-columns:1fr;align-items:start}
   .admin-controls{grid-template-columns:1fr;background:transparent;gap:18px}
   .admin-controls label,.admin-controls label:nth-child(n){padding:0}
+  .admin-filter-submit{width:100%}
   .admin-table{margin-top:26px}
   .admin-table table,.admin-table tbody,.admin-table tr,.admin-table td{display:block;width:auto}
   .admin-table thead{
@@ -787,6 +803,7 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .admin-detail-grid{grid-template-columns:1fr}
   .admin-detail-grid__wide{grid-column:auto}
   .admin-history li{grid-template-columns:1fr;gap:12px}
+  .admin-pagination{align-items:stretch;flex-direction:column}
   .admin-status-form{grid-template-columns:1fr}
   .admin-status-form__note,.admin-status-form__submit{grid-column:auto}
   .admin-status-form__submit{display:grid}

@@ -1,4 +1,4 @@
-create or replace function public.update_engagement_status(
+create or replace function private.update_engagement_status(
   p_engagement_id uuid,
   p_next_status text,
   p_title text,
@@ -6,13 +6,20 @@ create or replace function public.update_engagement_status(
 )
 returns boolean
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
+  v_author_id uuid;
   v_current_status text;
   v_transition_allowed boolean;
 begin
+  v_author_id := (select auth.uid());
+
+  if v_author_id is null then
+    raise exception 'Admin access is required' using errcode = '42501';
+  end if;
+
   if not (select private.is_admin()) then
     raise exception 'Admin access is required' using errcode = '42501';
   end if;
@@ -48,12 +55,6 @@ begin
     raise exception 'A customer-visible note is required'
       using errcode = '22023';
   end if;
-
-  perform pg_catalog.set_config(
-    'app.admin_status_rpc_user',
-    (select auth.uid())::text,
-    true
-  );
 
   select engagements.workflow_status
   into v_current_status
@@ -114,7 +115,7 @@ begin
   )
   values (
     p_engagement_id,
-    (select auth.uid()),
+    v_author_id,
     p_next_status,
     pg_catalog.btrim(p_title),
     pg_catalog.btrim(p_note),
@@ -125,44 +126,55 @@ begin
 end;
 $$;
 
+revoke all on function private.update_engagement_status(uuid, text, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function private.update_engagement_status(uuid, text, text, text)
+  to authenticated;
+
+create or replace function public.update_engagement_status(
+  p_engagement_id uuid,
+  p_next_status text,
+  p_title text,
+  p_note text
+)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Admin access is required' using errcode = '42501';
+  end if;
+
+  if not (select private.is_admin()) then
+    raise exception 'Admin access is required' using errcode = '42501';
+  end if;
+
+  return private.update_engagement_status(
+    p_engagement_id,
+    p_next_status,
+    p_title,
+    p_note
+  );
+end;
+$$;
+
 revoke all on function public.update_engagement_status(uuid, text, text, text)
-  from public, anon, service_role;
+  from public, anon, authenticated, service_role;
 grant execute on function public.update_engagement_status(uuid, text, text, text)
   to authenticated;
 
+revoke update (workflow_status, onboarding_completed_at, updated_at)
+  on table public.engagements from authenticated;
+revoke insert on table public.status_updates from authenticated;
+
 drop policy if exists "Admins can update engagements"
   on public.engagements;
-create policy "Admins can update engagements through workflow RPC"
-on public.engagements
-for update
-to authenticated
-using (
-  (select private.is_admin())
-  and pg_catalog.current_setting(
-    'app.admin_status_rpc_user',
-    true
-  ) = (select auth.uid())::text
-)
-with check (
-  (select private.is_admin())
-  and pg_catalog.current_setting(
-    'app.admin_status_rpc_user',
-    true
-  ) = (select auth.uid())::text
-);
+drop policy if exists "Admins can update engagements through workflow RPC"
+  on public.engagements;
 
 drop policy if exists "Admins can create status updates"
   on public.status_updates;
-create policy "Admins can create status updates through workflow RPC"
-on public.status_updates
-for insert
-to authenticated
-with check (
-  (select private.is_admin())
-  and author_id = (select auth.uid())
-  and customer_visible
-  and pg_catalog.current_setting(
-    'app.admin_status_rpc_user',
-    true
-  ) = (select auth.uid())::text
-);
+drop policy if exists "Admins can create status updates through workflow RPC"
+  on public.status_updates;

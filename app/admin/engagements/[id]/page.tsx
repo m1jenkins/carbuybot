@@ -11,6 +11,10 @@ import {
   hasSupabaseConfiguration,
   requireAdmin,
 } from "@/lib/auth/admin";
+import {
+  ADMIN_HISTORY_PAGE_SIZE,
+  parseAdminHistorySearchParams,
+} from "@/lib/domain/admin-query";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -18,6 +22,9 @@ import { updateEngagementStatus } from "./actions";
 
 type EngagementPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<
+    Record<string, string | string[] | undefined>
+  >;
 };
 
 type RawDetailEngagement = Pick<
@@ -111,11 +118,14 @@ function normalizeUpdate(row: Tables<"status_updates">): AdminStatusUpdate {
 
 export default async function EngagementPage({
   params,
+  searchParams = Promise.resolve({}),
 }: EngagementPageProps) {
   if (!hasSupabaseConfiguration()) return null;
 
   const route = z.object({ id: z.uuid() }).safeParse(await params);
   if (!route.success) notFound();
+  const { historyPage } = parseAdminHistorySearchParams(await searchParams);
+  const historyFrom = (historyPage - 1) * ADMIN_HISTORY_PAGE_SIZE;
 
   await requireAdmin();
   const supabase = await createServerClient();
@@ -138,16 +148,23 @@ export default async function EngagementPage({
       .from("status_updates")
       .select(
         "author_id, created_at, customer_visible, engagement_id, id, note, status, title",
+        { count: "exact" },
       )
       .eq("engagement_id", route.data.id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(historyFrom, historyFrom + ADMIN_HISTORY_PAGE_SIZE - 1),
   ]);
 
   if (engagementResult.error || !engagementResult.data) {
     notFound();
   }
 
-  if (briefResult.error || updatesResult.error) {
+  if (
+    briefResult.error ||
+    updatesResult.error ||
+    typeof updatesResult.count !== "number"
+  ) {
     return (
       <main id="admin-main" className="wrap admin-message">
         <span className="label">Engagement review</span>
@@ -174,6 +191,12 @@ export default async function EngagementPage({
     <EngagementReview
       brief={brief}
       engagement={engagement}
+      historyPage={historyPage}
+      historyPageCount={Math.max(
+        1,
+        Math.ceil(updatesResult.count / ADMIN_HISTORY_PAGE_SIZE),
+      )}
+      historyTotal={updatesResult.count}
       statusAction={updateEngagementStatus}
       updates={updates}
     />

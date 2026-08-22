@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     createServerClient: vi.fn(),
     engagementQuery,
     from: vi.fn(),
+    hasSupabaseConfiguration: vi.fn(),
     revalidatePath: vi.fn(),
     requireAdmin: vi.fn(),
     rpc: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/auth/admin", () => ({
+  hasSupabaseConfiguration: mocks.hasSupabaseConfiguration,
   requireAdmin: mocks.requireAdmin,
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -41,6 +43,7 @@ const validInput = {
 describe("updateEngagementStatus", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.hasSupabaseConfiguration.mockReturnValue(true);
     mocks.engagementQuery.select.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.eq.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.maybeSingle.mockResolvedValue({
@@ -57,6 +60,18 @@ describe("updateEngagementStatus", () => {
       from: mocks.from,
       rpc: mocks.rpc,
     });
+  });
+
+  it("returns a safe setup error before authorization when configuration is missing", async () => {
+    mocks.hasSupabaseConfiguration.mockReturnValueOnce(false);
+
+    await expect(updateEngagementStatus(validInput)).resolves.toEqual({
+      ok: false,
+      error: "Admin access is not configured.",
+    });
+    expect(mocks.requireAdmin).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("validates required customer-visible copy before authorization or mutation", async () => {

@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAdmin } from "@/lib/auth/admin";
+import {
+  hasSupabaseConfiguration,
+  requireAdmin,
+} from "@/lib/auth/admin";
 import {
   adminStatusUpdateSchema,
   validateTransition,
@@ -18,6 +21,13 @@ export type UpdateEngagementStatusResult =
 export async function updateEngagementStatus(
   input: AdminStatusUpdateInput,
 ): Promise<UpdateEngagementStatusResult> {
+  if (!hasSupabaseConfiguration()) {
+    return {
+      ok: false,
+      error: "Admin access is not configured.",
+    };
+  }
+
   const parsed = adminStatusUpdateSchema.safeParse(input);
   if (!parsed.success) {
     const copyMissing = parsed.error.issues.some(

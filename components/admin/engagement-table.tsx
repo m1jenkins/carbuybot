@@ -1,16 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import { useMemo, useState } from "react";
 
+import { ADMIN_QUEUE_PAGE_SIZE } from "@/lib/admin/engagement-queries";
 import { workflowLabels } from "@/lib/domain/admin-engagement";
+import type { AdminQueueQuery } from "@/lib/domain/admin-query";
 import { workflowStatuses } from "@/lib/domain/engagement";
 
 import type { AdminQueueEngagement } from "./types";
 
 type EngagementTableProps = {
   engagements: readonly AdminQueueEngagement[];
+  filteredCount: number;
   now?: string;
+  pageCount: number;
+  query: AdminQueueQuery;
 };
 
 const paymentLabels: Record<
@@ -63,55 +65,27 @@ function formatAge(createdAt: string, now: string): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
+function queuePageHref(query: AdminQueueQuery, page: number): string {
+  const params = new URLSearchParams();
+  if (query.status !== "all") params.set("status", query.status);
+  if (query.payment !== "all") params.set("payment", query.payment);
+  if (query.search) params.set("q", query.search);
+  if (query.sort !== "newest") params.set("sort", query.sort);
+  params.set("page", String(page));
+  return `/admin?${params.toString()}`;
+}
+
 export function EngagementTable({
   engagements,
+  filteredCount,
   now = new Date().toISOString(),
+  pageCount,
+  query,
 }: EngagementTableProps) {
-  const [workflowFilter, setWorkflowFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("newest");
-
-  const visibleEngagements = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return engagements
-      .filter(
-        (engagement) =>
-          workflowFilter === "all" ||
-          engagement.workflowStatus === workflowFilter,
-      )
-      .filter(
-        (engagement) =>
-          paymentFilter === "all" ||
-          engagement.paymentStatus === paymentFilter,
-      )
-      .filter((engagement) => {
-        if (!normalizedQuery) return true;
-        const vehicle = engagement.vehicle;
-        return [
-          engagement.customerEmail,
-          engagement.customerName,
-          vehicle?.make,
-          vehicle?.model,
-          vehicle?.city,
-          vehicle?.state,
-        ].some((value) => value?.toLowerCase().includes(normalizedQuery));
-      })
-      .sort((left, right) => {
-        if (sort === "oldest") {
-          return left.createdAt.localeCompare(right.createdAt);
-        }
-        if (sort === "customer") {
-          return (
-            left.customerName ?? left.customerEmail
-          ).localeCompare(right.customerName ?? right.customerEmail);
-        }
-        if (sort === "vehicle") {
-          return vehicleLabel(left).localeCompare(vehicleLabel(right));
-        }
-        return right.createdAt.localeCompare(left.createdAt);
-      });
-  }, [engagements, paymentFilter, query, sort, workflowFilter]);
+  const firstVisible =
+    filteredCount === 0 ? 0 : (query.page - 1) * ADMIN_QUEUE_PAGE_SIZE + 1;
+  const lastVisible =
+    filteredCount === 0 ? 0 : firstVisible + engagements.length - 1;
 
   return (
     <section className="admin-list" aria-labelledby="admin-list-title">
@@ -127,22 +101,20 @@ export function EngagementTable({
         </p>
       </div>
 
-      <div className="admin-controls">
+      <form className="admin-controls" action="/admin" method="get">
         <label>
           <span>Search engagements</span>
           <input
+            name="q"
             type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Customer, vehicle, or location"
+            defaultValue={query.search}
+            maxLength={320}
+            placeholder="Customer email or engagement UUID"
           />
         </label>
         <label>
           <span>Filter by workflow</span>
-          <select
-            value={workflowFilter}
-            onChange={(event) => setWorkflowFilter(event.target.value)}
-          >
+          <select name="status" defaultValue={query.status}>
             <option value="all">All workflow states</option>
             {workflowStatuses.map((status) => (
               <option key={status} value={status}>
@@ -153,10 +125,7 @@ export function EngagementTable({
         </label>
         <label>
           <span>Filter by payment</span>
-          <select
-            value={paymentFilter}
-            onChange={(event) => setPaymentFilter(event.target.value)}
-          >
+          <select name="payment" defaultValue={query.payment}>
             <option value="all">All payment states</option>
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
@@ -166,20 +135,21 @@ export function EngagementTable({
         </label>
         <label>
           <span>Sort engagements</span>
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value)}
-          >
+          <select name="sort" defaultValue={query.sort}>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
-            <option value="customer">Customer A–Z</option>
-            <option value="vehicle">Vehicle A–Z</option>
+            <option value="customer">Customer email A–Z</option>
           </select>
         </label>
-      </div>
+        <button className="admin-filter-submit" type="submit">
+          Apply filters
+        </button>
+      </form>
 
-      <p className="sr-only" aria-live="polite">
-        {visibleEngagements.length} engagements shown.
+      <p className="admin-list-summary" role="status" aria-live="polite">
+        Showing {firstVisible.toLocaleString("en-US")}–
+        {lastVisible.toLocaleString("en-US")} of{" "}
+        {filteredCount.toLocaleString("en-US")} engagements.
       </p>
 
       <div className="admin-table">
@@ -198,7 +168,7 @@ export function EngagementTable({
             </tr>
           </thead>
           <tbody>
-            {visibleEngagements.map((engagement) => (
+            {engagements.map((engagement) => (
               <tr key={engagement.id}>
                 <td data-label="Vehicle">
                   <Link
@@ -246,10 +216,31 @@ export function EngagementTable({
         </table>
       </div>
 
-      {visibleEngagements.length === 0 ? (
+      {engagements.length === 0 ? (
         <p className="admin-empty" role="status">
           No engagements match these filters.
         </p>
+      ) : null}
+
+      {pageCount > 1 ? (
+        <nav className="admin-pagination" aria-label="Queue pages">
+          {query.page > 1 ? (
+            <Link href={queuePageHref(query, query.page - 1)}>
+              Previous page
+            </Link>
+          ) : (
+            <span aria-disabled="true">Previous page</span>
+          )}
+          <span aria-current="page">
+            Page {query.page.toLocaleString("en-US")} of{" "}
+            {pageCount.toLocaleString("en-US")}
+          </span>
+          {query.page < pageCount ? (
+            <Link href={queuePageHref(query, query.page + 1)}>Next page</Link>
+          ) : (
+            <span aria-disabled="true">Next page</span>
+          )}
+        </nav>
       ) : null}
     </section>
   );

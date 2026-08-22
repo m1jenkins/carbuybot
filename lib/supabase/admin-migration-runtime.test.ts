@@ -203,39 +203,47 @@ describe("admin workflow migration runtime", () => {
     expect(state.update_count).toBe(0);
   });
 
-  it("blocks direct admin table writes outside the transactional RPC", async () => {
-    const directUpdate = await asAuthenticatedUser(db, adminId, () =>
-      db.query<{ workflow_status: string }>(
-        `
-          update public.engagements
-          set workflow_status = 'in_review',
-              updated_at = pg_catalog.now()
-          where id = $1
-          returning workflow_status
-        `,
-        [engagementId],
-      ),
-    );
-    expect(directUpdate.rows).toEqual([]);
+  it("blocks direct writes even when an admin forges the old custom GUC", async () => {
+    await expect(
+      asAuthenticatedUser(db, adminId, async () => {
+        await db.query(
+          "select pg_catalog.set_config('app.admin_status_rpc_user', $1, false)",
+          [adminId],
+        );
+        return db.query(
+          `
+            update public.engagements
+            set workflow_status = 'in_review',
+                updated_at = pg_catalog.now()
+            where id = $1
+          `,
+          [engagementId],
+        );
+      }),
+    ).rejects.toThrow(/permission denied/i);
 
     await expect(
-      asAuthenticatedUser(db, adminId, () =>
-        db.query(
+      asAuthenticatedUser(db, adminId, async () => {
+        await db.query(
+          "select pg_catalog.set_config('app.admin_status_rpc_user', $1, false)",
+          [adminId],
+        );
+        return db.query(
           `
-            insert into public.status_updates (
-              engagement_id,
-              author_id,
-              status,
-              title,
-              note,
-              customer_visible
-            )
-            values ($1, $2, 'in_review', 'Unpaired', 'Direct insert', true)
-          `,
+              insert into public.status_updates (
+                engagement_id,
+                author_id,
+                status,
+                title,
+                note,
+                customer_visible
+              )
+              values ($1, $2, 'in_review', 'Unpaired', 'Direct insert', true)
+            `,
           [engagementId, adminId],
-        ),
-      ),
-    ).rejects.toThrow(/row-level security/i);
+        );
+      }),
+    ).rejects.toThrow(/permission denied/i);
 
     const state = await readState(db);
     expect(state.workflow_status).toBe("brief_submitted");
