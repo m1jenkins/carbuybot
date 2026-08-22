@@ -10,6 +10,8 @@ vi.mock("../supabase/admin", () => ({
 }));
 
 import {
+  attachCheckoutSession,
+  failCheckoutReservation,
   persistStripeEvent,
   persistStripeExpiration,
   persistStripeRefund,
@@ -70,6 +72,34 @@ describe("Stripe service-role repository", () => {
         standardPriceId: "price_standard_test",
       }),
     ).rejects.toThrow("database unavailable");
+  });
+
+  it("attaches a Checkout Session through an idempotent service-role RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+
+    await expect(
+      attachCheckoutSession({
+        checkoutSessionId: "cs_test_checkout",
+        engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      }),
+    ).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith("attach_checkout_session", {
+      p_checkout_session_id: "cs_test_checkout",
+      p_engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+    });
+  });
+
+  it("marks a definitively failed unattached reservation through a narrow RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+
+    await expect(
+      failCheckoutReservation("a6204b70-c308-40e8-b87f-30843d48cb79"),
+    ).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith("fail_checkout_reservation", {
+      p_engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+    });
   });
 
   it("maps fulfillment into one typed database RPC", async () => {

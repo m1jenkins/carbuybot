@@ -116,7 +116,7 @@ describe("server-selected Stripe pricing", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses the intro price for the first 100 paid engagements", () => {
+  it("uses the intro price for the first 100 Checkout reservations", () => {
     expect(choosePrice(99)).toEqual({
       label: "intro",
       priceId: "price_intro_test",

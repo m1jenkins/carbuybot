@@ -9,17 +9,17 @@ const priceAmounts: Record<PriceLabel, number> = {
 };
 
 export function choosePrice(
-  paidCount: number,
+  reservationCount: number,
   priceIds: StripePriceIds = getStripePriceIds(),
 ): {
   priceId: string;
   label: PriceLabel;
 } {
-  if (!Number.isSafeInteger(paidCount) || paidCount < 0) {
-    throw new Error("Paid engagement count must be a non-negative integer");
+  if (!Number.isSafeInteger(reservationCount) || reservationCount < 0) {
+    throw new Error("Checkout reservation count must be a non-negative integer");
   }
 
-  const label: PriceLabel = paidCount < 100 ? "intro" : "standard";
+  const label: PriceLabel = reservationCount < 100 ? "intro" : "standard";
 
   return {
     label,

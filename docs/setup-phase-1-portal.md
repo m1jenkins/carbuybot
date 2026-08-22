@@ -39,7 +39,7 @@ APP_DEMO_MODE=false
 | `NEXT_PUBLIC_APP_URL` | Exact HTTP(S) origin used in Checkout return URLs; no path, credentials, or trailing path. |
 | `STRIPE_SECRET_KEY` | Secret/restricted secret from a Stripe testing environment. Runtime rejects live and publishable keys. |
 | `STRIPE_WEBHOOK_SECRET` | Endpoint-specific test signing secret beginning with the documented placeholder prefix. The CLI listener and hosted endpoint have different values. |
-| `STRIPE_PRICE_INTRO_ID` | One-time test Price for $349 USD, used for the first 100 paid engagements. |
+| `STRIPE_PRICE_INTRO_ID` | One-time test Price for $349 USD, used for the first 100 Checkout reservations. |
 | `STRIPE_PRICE_STANDARD_ID` | One-time test Price for $399 USD, used after the introductory allocation. |
 | `APP_DEMO_MODE` | Local review only. Set to `true` only with `NODE_ENV !== "production"`; leave `false` or unset in every deployment. |
 
@@ -207,8 +207,12 @@ server creates only Stripe-hosted Checkout Sessions with `mode: "payment"` and
 one configured Price. The database reserves the smallest available
 introductory slot from 1 through 100 under an advisory transaction lock and
 stores the selected Price ID, amount, and currency as an immutable pending
-snapshot. Paid and refunded engagements retain their slot. An expired,
-still-pending Checkout releases it for the next reservation.
+snapshot. A same-email retry within 23 hours reuses that pending engagement and
+its engagement-derived Stripe idempotency key instead of consuming another
+slot. Once Stripe creates the Session, the server idempotently attaches its
+test Session ID before returning the Checkout URL. Paid and refunded
+engagements retain their slot. An expired, still-pending Checkout releases it
+for the next reservation.
 
 ### Local webhook forwarding
 
@@ -269,6 +273,27 @@ an explicit status check; each check reconciles again.
 idempotently marks only the matching pending engagement failed and releases
 its introductory slot. Do not delete paid or refunded rows or reclaim their
 slots.
+
+If Stripe definitively rejects Session creation because the request,
+credentials, or account permissions are invalid, the server marks only an
+unattached pending reservation failed and releases its slot. Network errors,
+timeouts, rate limits, and unknown provider responses are ambiguous: the
+reservation remains pending, and a retry uses the same engagement and
+idempotency key so Stripe can return the same Session.
+
+Before public launch, configure infrastructure-level rate limits for
+`POST /api/checkout` by source and normalized email (and for passwordless email
+requests) at the deployment edge or API gateway. Database locking and
+same-email reuse prevent over-allocation, but they are not abuse controls and
+do not replace edge limits.
+
+Also reconcile unresolved pending reservations before launch. For each pending
+row older than 23 hours, search Stripe test request logs and Sessions by the
+`checkout-engagement-<engagement UUID>` idempotency key, client reference, and
+metadata. Replay a valid Session's webhook or its expiration event. Only after
+Stripe logs definitively show that no Session was created may an operator use
+the service-role-only `fail_checkout_reservation` RPC to release an unattached
+row. Attached, paid, and refunded rows are not eligible for that release RPC.
 
 For `charge.refunded`, only a test-mode charge with `refunded=true` is modeled.
 The event transaction matches the PaymentIntent, marks the engagement

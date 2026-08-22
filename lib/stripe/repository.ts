@@ -66,6 +66,11 @@ type CheckoutReservation = {
   priceId: string;
 };
 
+type CheckoutSessionAttachment = {
+  checkoutSessionId: string;
+  engagementId: string;
+};
+
 export async function reserveCheckoutEngagement(
   input: CheckoutReservationInput,
 ): Promise<CheckoutReservation> {
@@ -99,6 +104,41 @@ export async function reserveCheckoutEngagement(
     introSlot: reservation.intro_slot,
     priceId: reservation.price_id,
   };
+}
+
+export async function attachCheckoutSession(
+  input: CheckoutSessionAttachment,
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("attach_checkout_session", {
+    p_checkout_session_id: input.checkoutSessionId,
+    p_engagement_id: input.engagementId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (typeof data !== "boolean") {
+    throw new Error("Checkout Session attachment returned an invalid result");
+  }
+  return data;
+}
+
+export async function failCheckoutReservation(
+  engagementId: string,
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("fail_checkout_reservation", {
+    p_engagement_id: engagementId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (typeof data !== "boolean") {
+    throw new Error("Checkout reservation failure returned an invalid result");
+  }
+  return data;
 }
 
 export const persistStripeEvent: PersistStripeEvent = async (input) => {

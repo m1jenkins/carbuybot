@@ -102,6 +102,22 @@ const finalReviewMigration = finalReviewMigrationName
     )
   : "";
 const normalizedFinalReviewSql = finalReviewMigration.replace(/\s+/g, " ");
+const checkoutReservationHardeningMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_checkout_reservations.sql"));
+const checkoutReservationHardeningMigration =
+  checkoutReservationHardeningMigrationName
+    ? readFileSync(
+        join(
+          process.cwd(),
+          "supabase/migrations",
+          checkoutReservationHardeningMigrationName,
+        ),
+        "utf8",
+      )
+    : "";
+const normalizedCheckoutReservationHardeningSql =
+  checkoutReservationHardeningMigration.replace(/\s+/g, " ");
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -570,5 +586,46 @@ describe("final payment and revision hardening", () => {
     expect(publicSave).not.toContain("security definer");
     expect(privateSave).toContain("security definer");
     expect(privateSave).toContain("set search_path = ''");
+  });
+});
+
+describe("Checkout reservation retry hardening", () => {
+  it("keeps reservation lifecycle RPCs invoker-only and service-role-only", () => {
+    for (const signature of [
+      "attach_checkout_session(uuid, text)",
+      "fail_checkout_reservation(uuid)",
+    ]) {
+      expect(normalizedCheckoutReservationHardeningSql).toContain(
+        `revoke all on function public.${signature} from public, anon, authenticated;`,
+      );
+      expect(normalizedCheckoutReservationHardeningSql).toContain(
+        `grant execute on function public.${signature} to service_role;`,
+      );
+    }
+
+    const publicFunctions = normalizedCheckoutReservationHardeningSql.match(
+      /create or replace function public\.(?:reserve_checkout_engagement|attach_checkout_session|fail_checkout_reservation)\([\s\S]*?\$\$;/g,
+    );
+    expect(publicFunctions).toHaveLength(3);
+    for (const fn of publicFunctions ?? []) {
+      expect(fn).toContain("security invoker");
+      expect(fn).not.toContain("security definer");
+      expect(fn).toContain("set search_path = ''");
+    }
+  });
+
+  it("reuses pending reservations under the same allocation lock and releases only unattached rows", () => {
+    expect(normalizedCheckoutReservationHardeningSql).toContain(
+      "payment_status = 'pending' and engagements.created_at >= pg_catalog.now() - interval '23 hours'",
+    );
+    expect(normalizedCheckoutReservationHardeningSql).toContain(
+      "engagements.customer_email = p_customer_email",
+    );
+    expect(normalizedCheckoutReservationHardeningSql).toContain(
+      "engagements.stripe_checkout_session_id is null",
+    );
+    expect(normalizedCheckoutReservationHardeningSql).toContain(
+      "payment_status = 'failed', intro_slot = null",
+    );
   });
 });

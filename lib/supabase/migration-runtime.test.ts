@@ -69,6 +69,20 @@ const finalReviewMigration = finalReviewMigrationName
       "utf8",
     )
   : "";
+const checkoutReservationHardeningMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_harden_checkout_reservations.sql"));
+const checkoutReservationHardeningMigration =
+  checkoutReservationHardeningMigrationName
+    ? readFileSync(
+        join(
+          process.cwd(),
+          "supabase/migrations",
+          checkoutReservationHardeningMigrationName,
+        ),
+        "utf8",
+      )
+    : "";
 
 const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const missingEngagementId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
@@ -164,6 +178,35 @@ async function reserveCheckout(
     [customerEmail],
   );
   return result.rows[0]!;
+}
+
+async function attachCheckout(
+  db: PGlite,
+  reservationId: string,
+  checkoutSessionId = "cs_test_attached",
+) {
+  const result = await db.query<{ attached: boolean }>(
+    `
+      select public.attach_checkout_session(
+        $1::uuid,
+        $2::text
+      ) as attached
+    `,
+    [reservationId, checkoutSessionId],
+  );
+  return result.rows[0]?.attached;
+}
+
+async function failCheckoutReservation(db: PGlite, reservationId: string) {
+  const result = await db.query<{ failed: boolean }>(
+    `
+      select public.fail_checkout_reservation(
+        $1::uuid
+      ) as failed
+    `,
+    [reservationId],
+  );
+  return result.rows[0]?.failed;
 }
 
 async function expireCheckout(
@@ -467,6 +510,7 @@ describe("Stripe fulfillment migration runtime", () => {
     await db.exec(briefRevisionsMigration);
     await db.exec(briefRevisionConsistencyMigration);
     await db.exec(finalReviewMigration);
+    await db.exec(checkoutReservationHardeningMigration);
   });
 
   afterEach(async () => {
@@ -621,6 +665,124 @@ describe("Stripe fulfillment migration runtime", () => {
     });
   });
 
+  it("reuses one recent pending reservation for same-email retries", async () => {
+    const first = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "repeat@example.com"),
+    );
+    const retry = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "repeat@example.com"),
+    );
+
+    expect(retry).toEqual(first);
+    const state = await db.query<{
+      count: number;
+      intro_slot: number;
+      payment_status: string;
+    }>(
+      `
+        select
+          count(*)::int as count,
+          min(intro_slot)::int as intro_slot,
+          min(payment_status::text) as payment_status
+        from public.engagements
+        where customer_email = 'repeat@example.com'
+      `,
+    );
+    expect(state.rows[0]).toEqual({
+      count: 1,
+      intro_slot: 1,
+      payment_status: "pending",
+    });
+  });
+
+  it("attaches the recovered Session idempotently without changing its reservation", async () => {
+    const reservation = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "attach@example.com"),
+    );
+
+    await expect(
+      asRole(db, "service_role", () =>
+        attachCheckout(db, reservation.id, "cs_test_recovered"),
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      asRole(db, "service_role", () =>
+        attachCheckout(db, reservation.id, "cs_test_recovered"),
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      asRole(db, "service_role", () =>
+        attachCheckout(db, reservation.id, "cs_test_different"),
+      ),
+    ).rejects.toThrow(/matching unattached pending reservation/i);
+
+    const retry = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "attach@example.com"),
+    );
+    expect(retry).toEqual(reservation);
+    const state = await db.query<{
+      intro_slot: number;
+      payment_status: string;
+      stripe_checkout_session_id: string;
+    }>(
+      `
+        select intro_slot, payment_status, stripe_checkout_session_id
+        from public.engagements
+        where id = $1
+      `,
+      [reservation.id],
+    );
+    expect(state.rows[0]).toEqual({
+      intro_slot: 1,
+      payment_status: "pending",
+      stripe_checkout_session_id: "cs_test_recovered",
+    });
+  });
+
+  it("releases only a definitively failed unattached reservation", async () => {
+    const failedReservation = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "failed@example.com"),
+    );
+    await expect(
+      asRole(db, "service_role", () =>
+        failCheckoutReservation(db, failedReservation.id),
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      asRole(db, "service_role", () =>
+        failCheckoutReservation(db, failedReservation.id),
+      ),
+    ).resolves.toBe(false);
+
+    const replacement = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "replacement@example.com"),
+    );
+    expect(replacement.intro_slot).toBe(1);
+
+    const attachedReservation = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "ambiguous@example.com"),
+    );
+    await asRole(db, "service_role", () =>
+      attachCheckout(db, attachedReservation.id, "cs_test_ambiguous"),
+    );
+    await expect(
+      asRole(db, "service_role", () =>
+        failCheckoutReservation(db, attachedReservation.id),
+      ),
+    ).resolves.toBe(false);
+    const attachedState = await db.query<{
+      intro_slot: number;
+      payment_status: string;
+    }>(
+      "select intro_slot, payment_status from public.engagements where id = $1",
+      [attachedReservation.id],
+    );
+    expect(attachedState.rows[0]).toEqual({
+      intro_slot: 2,
+      payment_status: "pending",
+    });
+  });
+
   it("releases expired pending slots while paid and refunded slots remain durable", async () => {
     const first = await asRole(db, "service_role", () =>
       reserveCheckout(db, "first@example.com"),
@@ -763,6 +925,23 @@ describe("Stripe fulfillment migration runtime", () => {
       "select count(*)::int as count from public.stripe_events",
     );
     expect(events.rows[0]?.count).toBe(0);
+  });
+
+  it("denies authenticated reservation attachment and failure release", async () => {
+    const reservation = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "restricted@example.com"),
+    );
+
+    await expect(
+      asRole(db, "authenticated", () =>
+        attachCheckout(db, reservation.id, "cs_test_forbidden"),
+      ),
+    ).rejects.toThrow(/permission denied/i);
+    await expect(
+      asRole(db, "authenticated", () =>
+        failCheckoutReservation(db, reservation.id),
+      ),
+    ).rejects.toThrow(/permission denied/i);
   });
 
   it("claims exact-email refunded engagements before or after the refund", async () => {

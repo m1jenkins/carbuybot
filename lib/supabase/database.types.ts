@@ -355,6 +355,13 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      attach_checkout_session: {
+        Args: {
+          p_checkout_session_id: string;
+          p_engagement_id: string;
+        };
+        Returns: boolean;
+      };
       claim_paid_engagements: {
         Args: {
           p_user_id: string;
@@ -368,6 +375,12 @@ export type Database = {
           p_engagement_id: string;
           p_event_id: string;
           p_price_id: string;
+        };
+        Returns: boolean;
+      };
+      fail_checkout_reservation: {
+        Args: {
+          p_engagement_id: string;
         };
         Returns: boolean;
       };

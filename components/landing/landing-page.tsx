@@ -44,7 +44,7 @@ export function LandingPage() {
           <div className="plate__scrim"></div>
           <div className="plate__body wrap">
             <div className="hero-copy">
-              <span className="label">First 100 customers pay $349 instead of $399</span>
+              <span className="label">First 100 checkout reservations are $349 instead of $399</span>
               <h1 className="d1"><span>Let a bot haggle</span> <span>for your next car</span></h1>
               <p className="lede">
                 Tell us the car you want. Your agent finds it at dealers near you, emails all of them, and negotiates
@@ -407,7 +407,7 @@ export function LandingPage() {
             <div className="price">
               <div className="price__l rv">
                 <div className="price__amt"><b className="num">$349</b><s className="num">$399</s></div>
-                <p className="price__note">You pay once, per car. $349 for the first 100 customers, then $399.
+                <p className="price__note">You pay once, per car. $349 for the first 100 checkout reservations, then $399.
                   Checkout first, then complete your vehicle brief.</p>
                 <div className="gtee">
                   <b>Save more than $349, or you <span className="money">don&rsquo;t pay it</span>.</b>
@@ -481,8 +481,8 @@ export function LandingPage() {
           <div className="plate__body wrap">
             <span className="label">Start</span>
             <h2 className="d2">Put an agent on your next car.</h2>
-            <p className="lede" style={{ "maxWidth": "46ch", "marginTop": "18px" }}>The first 100 customers pay $349 instead of
-              $399. Leave your email and we&rsquo;ll send you the brief to fill out.</p>
+            <p className="lede" style={{ "maxWidth": "46ch", "marginTop": "18px" }}>The first 100 checkout reservations are $349 instead of
+              $399. Leave your email to reserve Checkout, then fill out your brief after payment.</p>
             <CheckoutForm />
             <p className="fnote">Checkout first, then complete your vehicle brief. If your agent doesn&rsquo;t save
               you more than the service fee, we refund that fee in full.</p>
