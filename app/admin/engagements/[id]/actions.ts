@@ -52,7 +52,7 @@ export async function updateEngagementStatus(
     engagement?.workflow_status,
   );
 
-  if (engagementError || !currentStatus.success) {
+  if (engagementError || !engagement || !currentStatus.success) {
     return {
       ok: false,
       error: "We could not update that engagement. Refresh and try again.",
