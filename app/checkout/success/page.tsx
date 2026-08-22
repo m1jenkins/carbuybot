@@ -66,7 +66,10 @@ export default async function SuccessPage({
               Your secure portal is next. Use the same email to receive a
               one-time sign-in link and continue with your vehicle brief.
             </p>
-            <MagicLinkForm defaultEmail={email} />
+            <MagicLinkForm
+              defaultEmail={email}
+              destination="/portal?payment=processing"
+            />
           </section>
         ) : session && !isPaymentSession ? (
           <section className="result-copy" aria-labelledby="checkout-result">
@@ -92,6 +95,14 @@ export default async function SuccessPage({
               Stripe is still confirming the payment. No access has been
               created yet. Refresh this page after confirmation arrives.
             </p>
+            <Link
+              className="btn btn--line"
+              href={`/checkout/success?session_id=${encodeURIComponent(
+                session.id,
+              )}`}
+            >
+              Check payment status
+            </Link>
           </section>
         ) : (
           <section className="result-copy" aria-labelledby="checkout-result">

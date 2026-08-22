@@ -407,8 +407,8 @@ export function LandingPage() {
             <div className="price">
               <div className="price__l rv">
                 <div className="price__amt"><b className="num">$349</b><s className="num">$399</s></div>
-                <p className="price__note">You pay once, per car. $349 for the first 100 customers, then $399. We
-                  charge it only after you confirm your brief.</p>
+                <p className="price__note">You pay once, per car. $349 for the first 100 customers, then $399.
+                  Checkout first, then complete your vehicle brief.</p>
                 <div className="gtee">
                   <b>Save more than $349, or you <span className="money">don&rsquo;t pay it</span>.</b>
                   <p>If your agent can&rsquo;t negotiate savings bigger than its own fee, we refund you in full.
@@ -484,8 +484,8 @@ export function LandingPage() {
             <p className="lede" style={{ "maxWidth": "46ch", "marginTop": "18px" }}>The first 100 customers pay $349 instead of
               $399. Leave your email and we&rsquo;ll send you the brief to fill out.</p>
             <CheckoutForm />
-            <p className="fnote">We charge the $349 only after you confirm your brief. If your agent doesn&rsquo;t save
-              you more than that, you pay nothing.</p>
+            <p className="fnote">Checkout first, then complete your vehicle brief. If your agent doesn&rsquo;t save
+              you more than the service fee, we refund that fee in full.</p>
           </div>
         </section>
       </main>

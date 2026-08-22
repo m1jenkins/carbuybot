@@ -16,8 +16,16 @@ vi.mock("@/lib/stripe/client", () => ({
   }),
 }));
 vi.mock("@/components/auth/magic-link-form", () => ({
-  MagicLinkForm: ({ defaultEmail }: { defaultEmail: string }) => (
-    <div data-testid="magic-link">{defaultEmail}</div>
+  MagicLinkForm: ({
+    defaultEmail,
+    destination,
+  }: {
+    defaultEmail: string;
+    destination?: string;
+  }) => (
+    <div data-destination={destination} data-testid="magic-link">
+      {defaultEmail}
+    </div>
   ),
 }));
 
@@ -55,6 +63,10 @@ describe("Checkout result pages", () => {
     expect(screen.getByText("$349.00")).toBeInTheDocument();
     expect(screen.getByTestId("magic-link")).toHaveTextContent(
       "buyer@example.com",
+    );
+    expect(screen.getByTestId("magic-link")).toHaveAttribute(
+      "data-destination",
+      "/portal?payment=processing",
     );
     expect(mocks.retrieve).toHaveBeenCalledWith(
       "cs_test_paid_fixture_123",

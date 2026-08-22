@@ -130,7 +130,12 @@ The app sends `emailRedirectTo` as
 the callback origin/path to be allowlisted; query parameters do not change
 the allowlisted path. The callback exchanges the PKCE code server-side,
 fetches the current user, requires `email_confirmed_at`, and claims only paid,
-unclaimed engagements with the same normalized verified email.
+or refunded unclaimed engagements with the same normalized verified email.
+Authenticated portal and onboarding entry repeats this reconciliation after a
+fresh confirmed `getUser` check. Fulfillment also links a paid engagement when
+an exact-email profile already exists, so callback-before-webhook and
+webhook-before-callback delivery converge without trusting session display
+data.
 
 Before deployment, configure a trusted custom SMTP provider, disable provider
 link tracking, choose a short magic-link/OTP expiry, and review auth rate
@@ -199,7 +204,11 @@ In a Stripe sandbox or Dashboard test mode:
 Do not create recurring Prices, enable automatic tax, generate invoices,
 enable payment-method saving, or configure connected-account transfers. The
 server creates only Stripe-hosted Checkout Sessions with `mode: "payment"` and
-one configured Price.
+one configured Price. The database reserves the smallest available
+introductory slot from 1 through 100 under an advisory transaction lock and
+stores the selected Price ID, amount, and currency as an immutable pending
+snapshot. Paid and refunded engagements retain their slot. An expired,
+still-pending Checkout releases it for the next reservation.
 
 ### Local webhook forwarding
 
@@ -210,7 +219,7 @@ environment, then run the app and listener in separate terminals:
 stripe login
 npm run dev
 stripe listen \
-  --events checkout.session.completed,checkout.session.async_payment_succeeded \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.expired,charge.refunded \
   --forward-to localhost:3000/api/stripe/webhook
 ```
 
@@ -241,16 +250,33 @@ In Stripe Workbench while test data/sandbox is selected:
 3. Subscribe only to:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
+   - `checkout.session.expired`
+   - `charge.refunded`
 4. Copy that endpoint's test signing secret into the deployment's
    `STRIPE_WEBHOOK_SECRET`.
 5. Send a test event and confirm a 2xx response for a valid app-created test
    Session. Duplicate delivery must remain a 2xx no-op.
 
-Both supported events are signature-verified against the raw request body.
+All supported events are signature-verified against the raw request body.
 Fulfillment rejects live events, non-test Session IDs, non-payment Sessions,
-unpaid Sessions, mismatched engagement metadata, and invalid amounts or
-identifiers. The redirect success page is informational and never grants
-access or marks payment paid.
+unpaid Sessions, mismatched engagement metadata, and any amount, currency, or
+Price mismatch with the immutable reservation. The redirect success page is
+informational and never grants access or marks payment paid. If authentication
+finishes before fulfillment, the portal says payment is processing and offers
+an explicit status check; each check reconciles again.
+
+`checkout.session.expired` is the durable abandoned-Checkout cleanup path. It
+idempotently marks only the matching pending engagement failed and releases
+its introductory slot. Do not delete paid or refunded rows or reclaim their
+slots.
+
+For `charge.refunded`, only a test-mode charge with `refunded=true` is modeled.
+The event transaction matches the PaymentIntent, marks the engagement
+refunded, stops paid-only customer actions, and writes one visible “Payment
+refunded” audit update. Duplicate full-refund deliveries do not create
+duplicate updates. Partial refund events (`refunded=false`) are recorded and
+otherwise ignored; subscriptions, invoices, and credit-balance behavior remain
+out of scope.
 
 ## 6. Local review without Supabase
 
@@ -285,7 +311,8 @@ only, not a seed-data system, staging authentication bypass, or QA account.
 - [ ] Admin staff have matching protected `app_metadata` and active
       `admin_users` rows; no authorization uses `user_metadata`.
 - [ ] The two one-time USD Prices and endpoint are in a Stripe testing
-      environment; only the two supported Checkout events are registered.
+      environment; only the four supported Checkout/refund events are
+      registered.
 - [ ] The hosted webhook uses its own test signing secret and a public HTTPS
       `/api/stripe/webhook` URL.
 - [ ] `APP_DEMO_MODE` is unset or `false` in deployment settings.

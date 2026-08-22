@@ -179,6 +179,47 @@ describe("admin workflow migration runtime", () => {
       `,
       [engagementId],
     );
+    await db.query(
+      `
+        insert into public.vehicle_briefs (
+          engagement_id,
+          condition,
+          make,
+          model,
+          colors,
+          options,
+          deal_breakers,
+          budget_cents,
+          city,
+          state,
+          postal_code,
+          search_radius_miles,
+          timeline,
+          has_trade_in,
+          financing_preference,
+          consent
+        )
+        values (
+          $1,
+          'either',
+          'Genesis',
+          'GV80',
+          '{}',
+          '{}',
+          '{}',
+          6000000,
+          'Austin',
+          'TX',
+          '78701',
+          100,
+          'within_30_days',
+          false,
+          'undecided',
+          true
+        )
+      `,
+      [engagementId],
+    );
   });
 
   afterEach(async () => {
@@ -294,6 +335,56 @@ describe("admin workflow migration runtime", () => {
     expect(afterRetries.update_count).toBe(1);
     expect(afterRetries.title).toBe("Brief review started");
     expect(afterRetries.updated_at).toEqual(afterFirst.updated_at);
+  });
+
+  it("rejects unpaid operational transitions without an audit row", async () => {
+    await db.query(
+      "update public.engagements set payment_status = 'refunded' where id = $1",
+      [engagementId],
+    );
+
+    await expect(
+      asAuthenticatedUser(db, adminId, () =>
+        callStatusUpdate(db, "in_review"),
+      ),
+    ).rejects.toThrow(/paid engagement/i);
+
+    const state = await readState(db);
+    expect(state.workflow_status).toBe("brief_submitted");
+    expect(state.update_count).toBe(0);
+  });
+
+  it("rejects operational transitions without a vehicle brief or audit row", async () => {
+    await db.query("delete from public.vehicle_briefs where engagement_id = $1", [
+      engagementId,
+    ]);
+
+    await expect(
+      asAuthenticatedUser(db, adminId, () =>
+        callStatusUpdate(db, "in_review"),
+      ),
+    ).rejects.toThrow(/vehicle brief/i);
+
+    const state = await readState(db);
+    expect(state.workflow_status).toBe("brief_submitted");
+    expect(state.update_count).toBe(0);
+  });
+
+  it("reserves awaiting-brief submission for the customer finalization flow", async () => {
+    await db.query(
+      "update public.engagements set workflow_status = 'awaiting_brief' where id = $1",
+      [engagementId],
+    );
+
+    await expect(
+      asAuthenticatedUser(db, adminId, () =>
+        callStatusUpdate(db, "brief_submitted"),
+      ),
+    ).rejects.toThrow(/transition is not allowed/i);
+
+    const state = await readState(db);
+    expect(state.workflow_status).toBe("awaiting_brief");
+    expect(state.update_count).toBe(0);
   });
 
   it("rolls back the engagement update if inserting its audit note fails", async () => {

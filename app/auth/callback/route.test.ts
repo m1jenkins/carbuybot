@@ -144,6 +144,29 @@ describe("magic-link callback", () => {
     );
   });
 
+  it("routes callback-before-webhook to a truthful retryable processing state", async () => {
+    mocks.query.then.mockImplementationOnce((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
+
+    const response = await GET(
+      new Request(
+        "https://carbuyerbots.com/auth/callback?code=auth-code&next=%2Fportal%3Fpayment%3Dprocessing",
+      ),
+    );
+
+    expect(mocks.claimPaidEngagements).toHaveBeenCalledWith(
+      "user_1",
+      "buyer@example.com",
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://carbuyerbots.com/portal?payment=processing",
+    );
+  });
+
   it("carries an owned engagement selection through the callback", async () => {
     const response = await GET(
       new Request(

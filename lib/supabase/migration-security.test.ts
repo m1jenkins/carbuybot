@@ -92,6 +92,16 @@ const briefRevisionConsistencyMigration = briefRevisionConsistencyMigrationName
   : "";
 const normalizedBriefRevisionConsistencySql =
   briefRevisionConsistencyMigration.replace(/\s+/g, " ");
+const finalReviewMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_final_review_fixes.sql"));
+const finalReviewMigration = finalReviewMigrationName
+  ? readFileSync(
+      join(process.cwd(), "supabase/migrations", finalReviewMigrationName),
+      "utf8",
+    )
+  : "";
+const normalizedFinalReviewSql = finalReviewMigration.replace(/\s+/g, " ");
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -507,5 +517,48 @@ describe("brief revision consistency hardening", () => {
     expect(normalizedBriefRevisionConsistencySql).toContain(
       "grant execute on function public.finalize_vehicle_brief(uuid, uuid) to service_role;",
     );
+  });
+});
+
+describe("final payment and revision hardening", () => {
+  it("keeps every public payment RPC invoker-only and service-role-only", () => {
+    for (const signature of [
+      "reserve_checkout_engagement(text, text, text)",
+      "expire_stripe_checkout(text, uuid, text, text)",
+      "refund_stripe_payment(text, text)",
+    ]) {
+      expect(normalizedFinalReviewSql).toContain(
+        `revoke all on function public.${signature} from public, anon, authenticated;`,
+      );
+      expect(normalizedFinalReviewSql).toContain(
+        `grant execute on function public.${signature} to service_role;`,
+      );
+    }
+    const publicFunctions = normalizedFinalReviewSql.match(
+      /create or replace function public\.(?:reserve_checkout_engagement|expire_stripe_checkout|refund_stripe_payment)\([\s\S]*?\$\$;/g,
+    );
+    expect(publicFunctions).toHaveLength(3);
+    for (const fn of publicFunctions ?? []) {
+      expect(fn).toContain("security invoker");
+      expect(fn).not.toContain("security definer");
+      expect(fn).toContain("set search_path = ''");
+    }
+  });
+
+  it("removes browser draft writes and delegates through a fixed-path private helper", () => {
+    expect(normalizedFinalReviewSql).toContain(
+      "revoke insert, update on table public.brief_drafts from authenticated;",
+    );
+    const publicSave = normalizedFinalReviewSql.match(
+      /create or replace function public\.save_brief_answer\([\s\S]*?\$\$;/,
+    )?.[0];
+    const privateSave = normalizedFinalReviewSql.match(
+      /create or replace function private\.save_brief_answer\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(publicSave).toContain("security invoker");
+    expect(publicSave).toContain("private.save_brief_answer(");
+    expect(publicSave).not.toContain("security definer");
+    expect(privateSave).toContain("security definer");
+    expect(privateSave).toContain("set search_path = ''");
   });
 });

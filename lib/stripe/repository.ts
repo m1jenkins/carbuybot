@@ -32,55 +32,73 @@ export type StripeEventInput =
 
 export type PersistStripeEvent = (input: StripeEventInput) => Promise<boolean>;
 
-type PendingEngagementInput = {
-  amountCents: number;
-  currency: string;
-  customerEmail: string;
+export type StripeExpirationInput = {
+  checkoutSessionId: string;
+  engagementId: string;
+  eventId: string;
   priceId: string;
 };
 
-export async function countPaidEngagements(): Promise<number> {
+export type PersistStripeExpiration = (
+  input: StripeExpirationInput,
+) => Promise<boolean>;
+
+export type StripeRefundInput = {
+  eventId: string;
+  paymentIntentId: string;
+};
+
+export type PersistStripeRefund = (
+  input: StripeRefundInput,
+) => Promise<boolean>;
+
+type CheckoutReservationInput = {
+  customerEmail: string;
+  introPriceId: string;
+  standardPriceId: string;
+};
+
+type CheckoutReservation = {
+  amountCents: number;
+  currency: string;
+  id: string;
+  introSlot: number | null;
+  priceId: string;
+};
+
+export async function reserveCheckoutEngagement(
+  input: CheckoutReservationInput,
+): Promise<CheckoutReservation> {
   const admin = createAdminClient();
-  const { count, error } = await admin
-    .from("engagements")
-    .select("id", { count: "exact", head: true })
-    .eq("payment_status", "paid");
+  const { data, error } = await admin.rpc("reserve_checkout_engagement", {
+    p_customer_email: input.customerEmail,
+    p_intro_price_id: input.introPriceId,
+    p_standard_price_id: input.standardPriceId,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
-  if (count === null) {
-    throw new Error("Paid engagement count was not returned");
+  const reservation = data?.[0];
+  if (
+    !reservation ||
+    !Number.isSafeInteger(reservation.amount_cents) ||
+    typeof reservation.currency !== "string" ||
+    typeof reservation.id !== "string" ||
+    (reservation.intro_slot !== null &&
+      !Number.isSafeInteger(reservation.intro_slot)) ||
+    typeof reservation.price_id !== "string"
+  ) {
+    throw new Error("Checkout reservation transaction returned invalid data");
   }
 
-  return count;
-}
-
-export async function createPendingEngagement(
-  input: PendingEngagementInput,
-): Promise<{ id: string }> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("engagements")
-    .insert({
-      amount_cents: input.amountCents,
-      currency: input.currency,
-      customer_email: input.customerEmail,
-      payment_status: "pending",
-      price_id: input.priceId,
-      workflow_status: "awaiting_brief",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-  if (!data) {
-    throw new Error("Pending engagement was not created");
-  }
-
-  return data;
+  return {
+    amountCents: reservation.amount_cents,
+    currency: reservation.currency,
+    id: reservation.id,
+    introSlot: reservation.intro_slot,
+    priceId: reservation.price_id,
+  };
 }
 
 export const persistStripeEvent: PersistStripeEvent = async (input) => {
@@ -106,5 +124,41 @@ export const persistStripeEvent: PersistStripeEvent = async (input) => {
     throw new Error("Stripe fulfillment transaction returned an invalid result");
   }
 
+  return data;
+};
+
+export const persistStripeExpiration: PersistStripeExpiration = async (
+  input,
+) => {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("expire_stripe_checkout", {
+    p_checkout_session_id: input.checkoutSessionId,
+    p_engagement_id: input.engagementId,
+    p_event_id: input.eventId,
+    p_price_id: input.priceId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (typeof data !== "boolean") {
+    throw new Error("Stripe expiration transaction returned an invalid result");
+  }
+  return data;
+};
+
+export const persistStripeRefund: PersistStripeRefund = async (input) => {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("refund_stripe_payment", {
+    p_event_id: input.eventId,
+    p_payment_intent_id: input.paymentIntentId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (typeof data !== "boolean") {
+    throw new Error("Stripe refund transaction returned an invalid result");
+  }
   return data;
 };

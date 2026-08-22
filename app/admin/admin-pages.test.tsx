@@ -329,6 +329,19 @@ describe("admin route data access", () => {
     );
   });
 
+  it("canonicalizes history pages beyond the final page", async () => {
+    await expect(
+      EngagementPage({
+        params: Promise.resolve({ id }),
+        searchParams: Promise.resolve({ historyPage: "99" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/admin/engagements/${id}?historyPage=3#admin-history-title`,
+    );
+  });
+
   it("loads full detail and history through the authenticated RLS client", async () => {
     render(
       await EngagementPage({

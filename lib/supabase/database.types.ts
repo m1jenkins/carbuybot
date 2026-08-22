@@ -98,6 +98,7 @@ export type Database = {
           currency: string;
           customer_email: string;
           id: string;
+          intro_slot: number | null;
           onboarding_completed_at: string | null;
           payment_status: PaymentStatus;
           price_id: string;
@@ -114,6 +115,7 @@ export type Database = {
           currency?: string;
           customer_email: string;
           id?: string;
+          intro_slot?: number | null;
           onboarding_completed_at?: string | null;
           payment_status?: PaymentStatus;
           price_id: string;
@@ -130,6 +132,7 @@ export type Database = {
           currency?: string;
           customer_email?: string;
           id?: string;
+          intro_slot?: number | null;
           onboarding_completed_at?: string | null;
           payment_status?: PaymentStatus;
           price_id?: string;
@@ -359,6 +362,15 @@ export type Database = {
         };
         Returns: number;
       };
+      expire_stripe_checkout: {
+        Args: {
+          p_checkout_session_id: string;
+          p_engagement_id: string;
+          p_event_id: string;
+          p_price_id: string;
+        };
+        Returns: boolean;
+      };
       fulfill_stripe_event: {
         Args: {
           p_amount_cents: number | null;
@@ -381,6 +393,27 @@ export type Database = {
           p_user_id: string;
         };
         Returns: boolean;
+      };
+      refund_stripe_payment: {
+        Args: {
+          p_event_id: string;
+          p_payment_intent_id: string;
+        };
+        Returns: boolean;
+      };
+      reserve_checkout_engagement: {
+        Args: {
+          p_customer_email: string;
+          p_intro_price_id: string;
+          p_standard_price_id: string;
+        };
+        Returns: {
+          amount_cents: number;
+          currency: string;
+          id: string;
+          intro_slot: number | null;
+          price_id: string;
+        }[];
       };
       save_brief_answer: {
         Args: {

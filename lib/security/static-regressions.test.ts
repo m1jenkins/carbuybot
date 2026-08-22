@@ -545,6 +545,16 @@ describe("setup and durable guidance", () => {
     expect(docs).toContain("/api/stripe/webhook");
     expect(docs).toContain("checkout.session.completed");
     expect(docs).toContain("checkout.session.async_payment_succeeded");
+    expect(docs).toContain("checkout.session.expired");
+    expect(docs).toContain("charge.refunded");
+  });
+
+  it("pins the verified Node 22 runtime range in package and setup guidance", () => {
+    const packageJson = JSON.parse(read("package.json")) as {
+      engines?: { node?: string };
+    };
+    expect(packageJson.engines?.node).toBe(">=22.14.0 <23.0.0");
+    expect(read("README.md")).toContain("Node.js 22.14 or newer (below 23)");
   });
 
   it("states the explicit Phase 1 exclusions and local-only demo contract", () => {

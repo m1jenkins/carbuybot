@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     briefQuery,
+    claimPaidEngagements: vi.fn(),
     createServerClient: vi.fn(),
     engagementQuery,
     from: vi.fn(),
@@ -39,6 +40,9 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: mocks.createServerClient,
+}));
+vi.mock("@/lib/supabase/claim", () => ({
+  claimPaidEngagements: mocks.claimPaidEngagements,
 }));
 
 import PortalPage from "./page";
@@ -158,6 +162,7 @@ describe("PortalPage", () => {
       error: null,
     });
     mocks.signOut.mockResolvedValue({ error: null });
+    mocks.claimPaidEngagements.mockResolvedValue(0);
     mocks.createServerClient.mockResolvedValue({
       auth: { getUser: mocks.getUser, signOut: mocks.signOut },
       from: mocks.from,
@@ -180,6 +185,10 @@ describe("PortalPage", () => {
 
     expect(mocks.createServerClient).toHaveBeenCalledTimes(1);
     expect(mocks.getUser).toHaveBeenCalledTimes(1);
+    expect(mocks.claimPaidEngagements).toHaveBeenCalledWith(
+      "user-1",
+      "buyer@example.com",
+    );
     expect(mocks.from.mock.calls.map(([table]) => table)).toEqual([
       "engagements",
       "vehicle_briefs",
@@ -236,6 +245,41 @@ describe("PortalPage", () => {
       screen.getByText(/no paid vehicle search is linked/i),
     ).toBeVisible();
     expect(mocks.from).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles callback-before-webhook and offers an explicit status check", async () => {
+    mocks.engagementQuery.then.mockImplementationOnce(
+      (onFulfilled, onRejected) =>
+        Promise.resolve({ data: [], error: null }).then(
+          onFulfilled,
+          onRejected,
+        ),
+    );
+
+    const { unmount } = render(
+      await PortalPage({
+        searchParams: Promise.resolve({ payment: "processing" }),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /payment is still processing/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /check payment status/i }),
+    ).toHaveAttribute("href", "/portal?payment=processing");
+    expect(screen.getByText(/does not grant portal access/i)).toBeVisible();
+
+    unmount();
+    mocks.claimPaidEngagements.mockResolvedValueOnce(1);
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({ payment: "processing" }),
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: /brief submitted/i }),
+    ).toBeVisible();
   });
 
   it("renders setup guidance without creating a client when config is missing", async () => {

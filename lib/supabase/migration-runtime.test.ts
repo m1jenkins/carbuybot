@@ -60,6 +60,15 @@ const briefRevisionConsistencyMigration = briefRevisionConsistencyMigrationName
       "utf8",
     )
   : "";
+const finalReviewMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_final_review_fixes.sql"));
+const finalReviewMigration = finalReviewMigrationName
+  ? readFileSync(
+      join(process.cwd(), "supabase/migrations", finalReviewMigrationName),
+      "utf8",
+    )
+  : "";
 
 const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
 const missingEngagementId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
@@ -131,6 +140,92 @@ async function callFulfillment(db: PGlite, input: FulfillmentInput) {
   );
 
   return result.rows[0]?.processed;
+}
+
+async function reserveCheckout(
+  db: PGlite,
+  customerEmail: string,
+) {
+  const result = await db.query<{
+    amount_cents: number;
+    currency: string;
+    id: string;
+    intro_slot: number | null;
+    price_id: string;
+  }>(
+    `
+      select *
+      from public.reserve_checkout_engagement(
+        $1::text,
+        'price_intro_test'::text,
+        'price_standard_test'::text
+      )
+    `,
+    [customerEmail],
+  );
+  return result.rows[0]!;
+}
+
+async function expireCheckout(
+  db: PGlite,
+  input: {
+    checkoutSessionId?: string;
+    engagementId: string;
+    eventId: string;
+    priceId?: string;
+  },
+) {
+  const result = await db.query<{ processed: boolean }>(
+    `
+      select public.expire_stripe_checkout(
+        $1::text,
+        $2::uuid,
+        $3::text,
+        $4::text
+      ) as processed
+    `,
+    [
+      input.eventId,
+      input.engagementId,
+      input.checkoutSessionId ?? "cs_test_expired",
+      input.priceId ?? "price_intro_test",
+    ],
+  );
+  return result.rows[0]?.processed;
+}
+
+async function refundPayment(
+  db: PGlite,
+  eventId: string,
+  paymentIntentId = "pi_test_payment",
+) {
+  const result = await db.query<{ processed: boolean }>(
+    `
+      select public.refund_stripe_payment(
+        $1::text,
+        $2::text
+      ) as processed
+    `,
+    [eventId, paymentIntentId],
+  );
+  return result.rows[0]?.processed;
+}
+
+async function claimEngagements(
+  db: PGlite,
+  ownerId: string,
+  email = "buyer@example.com",
+) {
+  const result = await db.query<{ claimed: number }>(
+    `
+      select public.claim_paid_engagements(
+        $1::uuid,
+        $2::text
+      ) as claimed
+    `,
+    [ownerId, email],
+  );
+  return result.rows[0]?.claimed;
 }
 
 async function asRole<T>(
@@ -371,6 +466,7 @@ describe("Stripe fulfillment migration runtime", () => {
     await bootstrapThroughIntakeHardening(db);
     await db.exec(briefRevisionsMigration);
     await db.exec(briefRevisionConsistencyMigration);
+    await db.exec(finalReviewMigration);
   });
 
   afterEach(async () => {
@@ -416,6 +512,157 @@ describe("Stripe fulfillment migration runtime", () => {
       "select count(*)::int as count from public.stripe_events",
     );
     expect(events.rows[0]?.count).toBe(1);
+  });
+
+  it("links fulfillment to an exact pre-existing verified-email profile", async () => {
+    await db.query("insert into auth.users (id) values ($1)", [userId]);
+    await db.query(
+      "insert into public.profiles (id, email) values ($1, 'buyer@example.com')",
+      [userId],
+    );
+    await insertPendingEngagement(db);
+
+    await asRole(db, "service_role", () =>
+      callFulfillment(db, { eventId: "evt_test_profile_link" }),
+    );
+
+    const engagement = await db.query<{ user_id: string | null }>(
+      "select user_id from public.engagements where id = $1",
+      [engagementId],
+    );
+    expect(engagement.rows[0]?.user_id).toBe(userId);
+  });
+
+  it("rolls back amount or currency mismatches and permits a corrected retry", async () => {
+    await insertPendingEngagement(db);
+
+    await expect(
+      asRole(db, "service_role", () =>
+        callFulfillment(db, {
+          amountCents: 39_900,
+          eventId: "evt_test_amount_mismatch",
+        }),
+      ),
+    ).rejects.toThrow(/matching pending engagement|amount|currency/i);
+
+    const rejected = await db.query<{
+      amount_cents: number;
+      currency: string;
+      event_count: number;
+      payment_status: string;
+    }>(
+      `
+        select
+          amount_cents,
+          currency,
+          payment_status,
+          (
+            select count(*)::int
+            from public.stripe_events
+            where event_id = 'evt_test_amount_mismatch'
+          ) as event_count
+        from public.engagements
+        where id = $1
+      `,
+      [engagementId],
+    );
+    expect(rejected.rows[0]).toEqual({
+      amount_cents: 34_900,
+      currency: "usd",
+      event_count: 0,
+      payment_status: "pending",
+    });
+
+    await expect(
+      asRole(db, "service_role", () =>
+        callFulfillment(db, {
+          eventId: "evt_test_amount_mismatch",
+        }),
+      ),
+    ).resolves.toBe(true);
+    const fulfilled = await db.query<{
+      amount_cents: number;
+      currency: string;
+      payment_status: string;
+    }>(
+      `
+        select amount_cents, currency, payment_status
+        from public.engagements
+        where id = $1
+      `,
+      [engagementId],
+    );
+    expect(fulfilled.rows[0]).toEqual({
+      amount_cents: 34_900,
+      currency: "usd",
+      payment_status: "paid",
+    });
+  });
+
+  it("atomically reserves no more than 100 introductory slots", async () => {
+    const reservations = await asRole(db, "service_role", () =>
+      Promise.all(
+        Array.from({ length: 101 }, (_, index) =>
+          reserveCheckout(db, `buyer${index}@example.com`),
+        ),
+      ),
+    );
+
+    expect(
+      reservations.filter((reservation) => reservation.intro_slot !== null),
+    ).toHaveLength(100);
+    expect(new Set(reservations.map((row) => row.intro_slot).filter(Boolean)).size)
+      .toBe(100);
+    expect(reservations.at(-1)).toMatchObject({
+      amount_cents: 39_900,
+      currency: "usd",
+      intro_slot: null,
+      price_id: "price_standard_test",
+    });
+  });
+
+  it("releases expired pending slots while paid and refunded slots remain durable", async () => {
+    const first = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "first@example.com"),
+    );
+    const second = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "second@example.com"),
+    );
+    expect(first.intro_slot).toBe(1);
+    expect(second.intro_slot).toBe(2);
+
+    await asRole(db, "service_role", () =>
+      expireCheckout(db, {
+        engagementId: first.id,
+        eventId: "evt_test_expired_slot",
+      }),
+    );
+    const replacement = await asRole(db, "service_role", () =>
+      reserveCheckout(db, "replacement@example.com"),
+    );
+    expect(replacement.intro_slot).toBe(1);
+
+    await asRole(db, "service_role", () =>
+      callFulfillment(db, {
+        customerEmail: "second@example.com",
+        engagementId: second.id,
+        eventId: "evt_test_second_paid",
+      }),
+    );
+    await asRole(db, "service_role", () =>
+      refundPayment(db, "evt_test_second_refunded"),
+    );
+    const retained = await db.query<{
+      intro_slot: number;
+      payment_status: string;
+    }>(
+      "select intro_slot, payment_status from public.engagements where id = $1",
+      [second.id],
+    );
+    expect(retained.rows[0]).toEqual({
+      intro_slot: 2,
+      payment_status: "refunded",
+    });
   });
 
   it("returns duplicate without changing the fulfilled engagement", async () => {
@@ -516,6 +763,94 @@ describe("Stripe fulfillment migration runtime", () => {
       "select count(*)::int as count from public.stripe_events",
     );
     expect(events.rows[0]?.count).toBe(0);
+  });
+
+  it("claims exact-email refunded engagements before or after the refund", async () => {
+    await db.query("insert into auth.users (id) values ($1)", [userId]);
+    await insertPendingEngagement(db);
+    await asRole(db, "service_role", () =>
+      callFulfillment(db, { eventId: "evt_test_paid_before_refund" }),
+    );
+    await asRole(db, "service_role", () =>
+      refundPayment(db, "evt_test_refund_before_claim"),
+    );
+
+    await expect(
+      asRole(db, "service_role", () => claimEngagements(db, userId)),
+    ).resolves.toBe(1);
+
+    const secondId = "83aca8da-9a4d-4b26-9414-7f444c39fc3d";
+    await insertPendingEngagement(db, secondId);
+    await asRole(db, "service_role", () =>
+      callFulfillment(db, {
+        checkoutSessionId: "cs_test_second_claim",
+        engagementId: secondId,
+        eventId: "evt_test_second_paid_before_claim",
+        paymentIntentId: "pi_test_second_claim",
+      }),
+    );
+    await expect(
+      asRole(db, "service_role", () => claimEngagements(db, userId)),
+    ).resolves.toBe(0);
+    await asRole(db, "service_role", () =>
+      refundPayment(
+        db,
+        "evt_test_refund_after_claim",
+        "pi_test_second_claim",
+      ),
+    );
+
+    const reconciled = await db.query<{
+      payment_status: string;
+      title: string;
+      update_count: number;
+      user_id: string;
+    }>(
+      `
+        select
+          engagements.payment_status,
+          engagements.user_id,
+          updates.title,
+          (
+            select count(*)::int
+            from public.status_updates
+            where engagement_id = engagements.id
+              and title = 'Payment refunded'
+          ) as update_count
+        from public.engagements
+        join public.status_updates as updates
+          on updates.engagement_id = engagements.id
+          and updates.title = 'Payment refunded'
+        where engagements.id = $1
+      `,
+      [secondId],
+    );
+    expect(reconciled.rows[0]).toEqual({
+      payment_status: "refunded",
+      title: "Payment refunded",
+      update_count: 1,
+      user_id: userId,
+    });
+
+    await expect(
+      asRole(db, "service_role", () =>
+        refundPayment(
+          db,
+          "evt_test_refund_after_claim_duplicate_delivery",
+          "pi_test_second_claim",
+        ),
+      ),
+    ).resolves.toBe(true);
+    const duplicateAudit = await db.query<{ count: number }>(
+      `
+        select count(*)::int as count
+        from public.status_updates
+        where engagement_id = $1
+          and title = 'Payment refunded'
+      `,
+      [secondId],
+    );
+    expect(duplicateAudit.rows[0]?.count).toBe(1);
   });
 
   it("lets only the paid owner save one answer through the authenticated RPC", async () => {
@@ -711,9 +1046,11 @@ describe("Stripe fulfillment migration runtime", () => {
 
     const state = await db.query<{
       budget_cents: number;
+      current_question_id: string;
       draft_count: number;
       make: string;
       onboarding_completed_at: Date | null;
+      progress_index: number;
       status: string;
       title: string;
       update_count: number;
@@ -725,12 +1062,15 @@ describe("Stripe fulfillment migration runtime", () => {
           e.onboarding_completed_at,
           b.make,
           b.budget_cents,
+          d.current_question_id,
+          d.progress_index,
           u.status,
           u.title,
           (select count(*)::int from public.status_updates) as update_count,
           (select count(*)::int from public.brief_drafts) as draft_count
         from public.engagements e
         join public.vehicle_briefs b on b.engagement_id = e.id
+        join public.brief_drafts d on d.engagement_id = e.id
         join public.status_updates u on u.engagement_id = e.id
         where e.id = $1
       `,
@@ -738,14 +1078,80 @@ describe("Stripe fulfillment migration runtime", () => {
     );
     expect(state.rows[0]).toMatchObject({
       budget_cents: 6_000_000,
+      current_question_id: "condition",
       draft_count: 1,
       make: "Toyota",
+      progress_index: -1,
       status: "brief_submitted",
       title: "Brief submitted",
       update_count: 1,
       workflow_status: "brief_submitted",
     });
     expect(state.rows[0]?.onboarding_completed_at).not.toBeNull();
+  });
+
+  it("resets and reloads revision progress after every changed finalization", async () => {
+    await insertClaimedPaidEngagement(db);
+    await insertDraft(db, completeDraftAnswers);
+    await asRole(db, "service_role", () => finalizeBrief(db));
+
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "condition", "new", "make"),
+    );
+    let cursor = await db.query<{
+      current_question_id: string;
+      progress_index: number;
+    }>(
+      `
+        select current_question_id, progress_index
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(cursor.rows[0]).toEqual({
+      current_question_id: "make",
+      progress_index: 0,
+    });
+
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "consent", true, null),
+    );
+    await asRole(db, "service_role", () => finalizeBrief(db));
+    cursor = await db.query<{
+      current_question_id: string;
+      progress_index: number;
+    }>(
+      `
+        select current_question_id, progress_index
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(cursor.rows[0]).toEqual({
+      current_question_id: "condition",
+      progress_index: -1,
+    });
+
+    await asAuthenticatedUser(db, userId, () =>
+      saveBriefAnswer(db, "condition", "used", "make"),
+    );
+    cursor = await db.query<{
+      current_question_id: string;
+      progress_index: number;
+    }>(
+      `
+        select current_question_id, progress_index
+        from public.brief_drafts
+        where engagement_id = $1
+      `,
+      [engagementId],
+    );
+    expect(cursor.rows[0]).toEqual({
+      current_question_id: "make",
+      progress_index: 0,
+    });
   });
 
   it("emits one submitted event for concurrent and retried unchanged finalization", async () => {
@@ -947,6 +1353,7 @@ describe("Stripe fulfillment migration runtime", () => {
 
       await upgradeDb.exec(briefRevisionsMigration);
       await upgradeDb.exec(briefRevisionConsistencyMigration);
+      await upgradeDb.exec(finalReviewMigration);
 
       const upgraded = await upgradeDb.query<{
         answers_match: boolean;
@@ -970,9 +1377,9 @@ describe("Stripe fulfillment migration runtime", () => {
       expect(upgraded.rows[0]).toEqual({
         answers_match: true,
         baseline_make: "Genesis",
-        current_question_id: null,
+        current_question_id: "condition",
         draft_make: "Genesis",
-        progress_index: 19,
+        progress_index: -1,
       });
     } finally {
       await upgradeDb.close();

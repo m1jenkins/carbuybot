@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { EngagementReview } from "@/components/admin/engagement-review";
@@ -186,16 +186,22 @@ export default async function EngagementPage({
   const updates = (updatesResult.data ?? []).map((update) =>
     normalizeUpdate(update as Tables<"status_updates">),
   );
+  const historyPageCount = Math.max(
+    1,
+    Math.ceil(updatesResult.count / ADMIN_HISTORY_PAGE_SIZE),
+  );
+  if (historyPage > historyPageCount) {
+    redirect(
+      `/admin/engagements/${route.data.id}?historyPage=${historyPageCount}#admin-history-title`,
+    );
+  }
 
   return (
     <EngagementReview
       brief={brief}
       engagement={engagement}
       historyPage={historyPage}
-      historyPageCount={Math.max(
-        1,
-        Math.ceil(updatesResult.count / ADMIN_HISTORY_PAGE_SIZE),
-      )}
+      historyPageCount={historyPageCount}
       historyTotal={updatesResult.count}
       statusAction={updateEngagementStatus}
       updates={updates}

@@ -108,6 +108,14 @@ export async function GET(request: Request) {
       requestedEngagementId,
     );
     if (!engagement) {
+      if (
+        requestedDestination.pathname === "/portal" &&
+        requestedDestination.searchParams.get("payment") === "processing"
+      ) {
+        return NextResponse.redirect(
+          new URL("/portal?payment=processing", requestUrl.origin),
+        );
+      }
       return NextResponse.redirect(new URL("/portal", requestUrl.origin));
     }
 

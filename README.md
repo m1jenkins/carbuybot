@@ -10,8 +10,9 @@ charges, Stripe Tax, invoices, subscriptions, saved cards, or Connect.
 
 ## Local setup
 
-Requirements: a current Node.js/npm installation and, only for the optional
-local database stack, Docker plus the Supabase CLI.
+Requirements: Node.js 22.14 or newer (below 23) with npm and, only for the
+optional local database stack, Docker plus the Supabase CLI. The exact
+supported engine range is `>=22.14.0 <23.0.0`.
 
 ```bash
 npm ci

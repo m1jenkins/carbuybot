@@ -30,7 +30,7 @@ const allowedTransitions: Record<
   WorkflowStatus,
   readonly WorkflowStatus[]
 > = {
-  awaiting_brief: ["brief_submitted", "cancelled"],
+  awaiting_brief: ["cancelled"],
   brief_submitted: ["in_review", "cancelled"],
   in_review: ["searching", "cancelled"],
   searching: ["negotiating", "cancelled"],

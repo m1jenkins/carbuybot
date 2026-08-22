@@ -15,6 +15,16 @@ const migration = migrationName
     )
   : "";
 const normalizedSql = migration.replace(/\s+/g, " ");
+const finalReviewMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_final_review_fixes.sql"));
+const finalReviewMigration = finalReviewMigrationName
+  ? readFileSync(
+      join(process.cwd(), "supabase/migrations", finalReviewMigrationName),
+      "utf8",
+    )
+  : "";
+const normalizedFinalReviewSql = finalReviewMigration.replace(/\s+/g, " ");
 
 describe("admin workflow migration security", () => {
   it("delegates the exposed invoker RPC to a fixed-path private definer", () => {
@@ -55,6 +65,19 @@ describe("admin workflow migration security", () => {
     );
     expect(normalizedSql).toContain(
       "grant execute on function private.update_engagement_status(uuid, text, text, text) to authenticated;",
+    );
+  });
+
+  it("requires paid state and a brief in the hardened private transition", () => {
+    const privateFunction = normalizedFinalReviewSql.match(
+      /create or replace function private\.update_engagement_status\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(privateFunction).toBeDefined();
+    expect(privateFunction).toContain("security definer set search_path = ''");
+    expect(privateFunction).toContain("payment_status");
+    expect(privateFunction).toContain("public.vehicle_briefs");
+    expect(privateFunction).not.toContain(
+      "p_next_status in ('brief_submitted', 'cancelled')",
     );
   });
 

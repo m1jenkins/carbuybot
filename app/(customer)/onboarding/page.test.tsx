@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     briefQuery,
+    claimPaidEngagements: vi.fn(),
     createServerClient: vi.fn(),
     draftQuery,
     engagementQuery,
@@ -40,6 +41,9 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: mocks.createServerClient,
+}));
+vi.mock("@/lib/supabase/claim", () => ({
+  claimPaidEngagements: mocks.claimPaidEngagements,
 }));
 vi.mock("@/components/onboarding/intake-thread", () => ({
   IntakeThread: (props: unknown) => {
@@ -147,6 +151,7 @@ describe("OnboardingPage brief revision", () => {
       },
       error: null,
     });
+    mocks.claimPaidEngagements.mockResolvedValue(0);
     mocks.createServerClient.mockResolvedValue({
       auth: { getUser: mocks.getUser },
       from: mocks.from,

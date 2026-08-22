@@ -13,6 +13,8 @@ import {
   fulfillCheckoutSession,
   processEvent,
   type PersistStripeEvent,
+  type PersistStripeExpiration,
+  type PersistStripeRefund,
   type StripeEventInput,
 } from "./fulfillment";
 import { choosePrice, getPriceAmountCents } from "./pricing";
@@ -303,6 +305,79 @@ describe("Stripe event fulfillment", () => {
     await expect(processEvent(completedEvent, persist)).rejects.toThrow(
       "database transaction failed",
     );
+  });
+
+  it("expires an abandoned pending Checkout reservation transactionally", async () => {
+    const memory = createMemoryPersistence();
+    const expire = vi.fn<PersistStripeExpiration>().mockResolvedValue(true);
+    const expiredSession = {
+      ...paidSession,
+      id: "cs_test_expired",
+      payment_status: "unpaid",
+    } as Stripe.Checkout.Session;
+    const event = {
+      id: "evt_test_expired",
+      livemode: false,
+      type: "checkout.session.expired",
+      data: { object: expiredSession },
+    } as Stripe.Event;
+
+    await expect(
+      processEvent(event, memory.persist, expire),
+    ).resolves.toBe("processed");
+    expect(expire).toHaveBeenCalledWith({
+      checkoutSessionId: "cs_test_expired",
+      engagementId: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      eventId: "evt_test_expired",
+      priceId: "price_intro_test",
+    });
+    expect(memory.calls).toHaveLength(0);
+  });
+
+  it("reconciles only fully refunded test charges", async () => {
+    const memory = createMemoryPersistence();
+    const expire = vi.fn<PersistStripeExpiration>();
+    const refund = vi.fn<PersistStripeRefund>().mockResolvedValue(true);
+    const fullRefund = {
+      id: "evt_test_refund",
+      livemode: false,
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_test_refund",
+          livemode: false,
+          payment_intent: "pi_test_payment",
+          refunded: true,
+        },
+      },
+    } as Stripe.Event;
+
+    await expect(
+      processEvent(fullRefund, memory.persist, expire, refund),
+    ).resolves.toBe("processed");
+    expect(refund).toHaveBeenCalledWith({
+      eventId: "evt_test_refund",
+      paymentIntentId: "pi_test_payment",
+    });
+
+    const partialRefund = {
+      ...fullRefund,
+      id: "evt_test_partial_refund",
+      data: {
+        object: {
+          ...(fullRefund.data.object as Stripe.Charge),
+          refunded: false,
+        },
+      },
+    } as Stripe.Event;
+    await expect(
+      processEvent(partialRefund, memory.persist, expire, refund),
+    ).resolves.toBe("processed");
+    expect(refund).toHaveBeenCalledOnce();
+    expect(memory.calls.at(-1)).toMatchObject({
+      eventId: "evt_test_partial_refund",
+      fulfill: false,
+    });
   });
 
   it("supports direct session fulfillment while keeping it idempotent", async () => {

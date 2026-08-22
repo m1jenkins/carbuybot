@@ -1,13 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const countPaidEngagements = vi.fn();
-  const createPendingEngagement = vi.fn();
+  const reserveCheckoutEngagement = vi.fn();
   const createSession = vi.fn();
 
   return {
-    countPaidEngagements,
-    createPendingEngagement,
+    reserveCheckoutEngagement,
     createSession,
     getStripe: vi.fn(() => ({
       checkout: {
@@ -24,8 +22,7 @@ vi.mock("@/lib/stripe/client", () => ({
   getStripe: mocks.getStripe,
 }));
 vi.mock("@/lib/stripe/repository", () => ({
-  countPaidEngagements: mocks.countPaidEngagements,
-  createPendingEngagement: mocks.createPendingEngagement,
+  reserveCheckoutEngagement: mocks.reserveCheckoutEngagement,
 }));
 
 import { POST } from "./route";
@@ -35,9 +32,12 @@ describe("POST /api/checkout", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://carbuyerbots.test/");
     vi.stubEnv("STRIPE_PRICE_INTRO_ID", "price_intro_test");
     vi.stubEnv("STRIPE_PRICE_STANDARD_ID", "price_standard_test");
-    mocks.countPaidEngagements.mockResolvedValue(99);
-    mocks.createPendingEngagement.mockResolvedValue({
+    mocks.reserveCheckoutEngagement.mockResolvedValue({
+      amountCents: 34_900,
+      currency: "usd",
       id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      introSlot: 100,
+      priceId: "price_intro_test",
     });
     mocks.createSession.mockResolvedValue({
       id: "cs_test_checkout",
@@ -63,12 +63,10 @@ describe("POST /api/checkout", () => {
     await expect(response.json()).resolves.toEqual({
       url: "https://checkout.stripe.com/c/pay/cs_test_checkout",
     });
-    expect(mocks.countPaidEngagements).toHaveBeenCalledOnce();
-    expect(mocks.createPendingEngagement).toHaveBeenCalledWith({
-      amountCents: 34_900,
-      currency: "usd",
+    expect(mocks.reserveCheckoutEngagement).toHaveBeenCalledWith({
       customerEmail: "buyer@example.com",
-      priceId: "price_intro_test",
+      introPriceId: "price_intro_test",
+      standardPriceId: "price_standard_test",
     });
     expect(mocks.createSession).toHaveBeenCalledWith({
       mode: "payment",
@@ -99,8 +97,7 @@ describe("POST /api/checkout", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Enter a valid email address.",
     });
-    expect(mocks.countPaidEngagements).not.toHaveBeenCalled();
-    expect(mocks.createPendingEngagement).not.toHaveBeenCalled();
+    expect(mocks.reserveCheckoutEngagement).not.toHaveBeenCalled();
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });
 
@@ -135,8 +132,7 @@ describe("POST /api/checkout", () => {
     );
 
     expect(response.status).toBe(500);
-    expect(mocks.countPaidEngagements).not.toHaveBeenCalled();
-    expect(mocks.createPendingEngagement).not.toHaveBeenCalled();
+    expect(mocks.reserveCheckoutEngagement).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
@@ -152,8 +148,7 @@ describe("POST /api/checkout", () => {
     );
 
     expect(response.status).toBe(500);
-    expect(mocks.countPaidEngagements).not.toHaveBeenCalled();
-    expect(mocks.createPendingEngagement).not.toHaveBeenCalled();
+    expect(mocks.reserveCheckoutEngagement).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 });

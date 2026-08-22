@@ -45,7 +45,7 @@ export async function updateEngagementStatus(
   const supabase = await createServerClient();
   const { data: engagement, error: engagementError } = await supabase
     .from("engagements")
-    .select("workflow_status")
+    .select("payment_status, workflow_status, vehicle_briefs(engagement_id)")
     .eq("id", parsed.data.engagementId)
     .maybeSingle();
   const currentStatus = workflowStatusSchema.safeParse(
@@ -56,6 +56,22 @@ export async function updateEngagementStatus(
     return {
       ok: false,
       error: "We could not update that engagement. Refresh and try again.",
+    };
+  }
+
+  if (engagement.payment_status !== "paid") {
+    return {
+      ok: false,
+      error: "Only a paid engagement can receive workflow updates.",
+    };
+  }
+  const hasBrief = Array.isArray(engagement.vehicle_briefs)
+    ? engagement.vehicle_briefs.length > 0
+    : Boolean(engagement.vehicle_briefs);
+  if (parsed.data.nextStatus !== "cancelled" && !hasBrief) {
+    return {
+      ok: false,
+      error: "A submitted vehicle brief is required for that workflow update.",
     };
   }
 

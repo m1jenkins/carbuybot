@@ -6,6 +6,7 @@ import {
   normalizeRequestedEngagementId,
   selectCustomerEngagement,
 } from "@/lib/domain/engagement-selection";
+import { claimPaidEngagements } from "@/lib/supabase/claim";
 import type { Json } from "@/lib/supabase/database.types";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerClient } from "@/lib/supabase/server";
@@ -73,11 +74,17 @@ export default async function OnboardingPage({
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
-  if (authError || !user) {
+  if (authError || !user?.email || !user.email_confirmed_at) {
     const next = requestedEngagementId
       ? `/onboarding?engagement=${requestedEngagementId}`
       : "/onboarding";
     redirect(`/sign-in?next=${encodeURIComponent(next)}`);
+  }
+
+  try {
+    await claimPaidEngagements(user.id, user.email);
+  } catch {
+    redirect("/portal?payment=processing");
   }
 
   const { data: visibleEngagements, error: engagementError } = await supabase

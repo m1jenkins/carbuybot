@@ -47,7 +47,11 @@ describe("updateEngagementStatus", () => {
     mocks.engagementQuery.select.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.eq.mockReturnValue(mocks.engagementQuery);
     mocks.engagementQuery.maybeSingle.mockResolvedValue({
-      data: { workflow_status: "brief_submitted" },
+      data: {
+        payment_status: "paid",
+        vehicle_briefs: [{ engagement_id: validInput.engagementId }],
+        workflow_status: "brief_submitted",
+      },
       error: null,
     });
     mocks.from.mockReturnValue(mocks.engagementQuery);
@@ -98,7 +102,7 @@ describe("updateEngagementStatus", () => {
     expect(mocks.createServerClient).toHaveBeenCalledOnce();
     expect(mocks.from).toHaveBeenCalledWith("engagements");
     expect(mocks.engagementQuery.select).toHaveBeenCalledWith(
-      "workflow_status",
+      "payment_status, workflow_status, vehicle_briefs(engagement_id)",
     );
     expect(mocks.engagementQuery.eq).toHaveBeenCalledWith(
       "id",
@@ -119,7 +123,11 @@ describe("updateEngagementStatus", () => {
 
   it("does not call the RPC for a repeated or impossible transition", async () => {
     mocks.engagementQuery.maybeSingle.mockResolvedValueOnce({
-      data: { workflow_status: "in_review" },
+      data: {
+        payment_status: "paid",
+        vehicle_briefs: [{ engagement_id: validInput.engagementId }],
+        workflow_status: "in_review",
+      },
       error: null,
     });
 
@@ -129,6 +137,36 @@ describe("updateEngagementStatus", () => {
     });
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("blocks unpaid or no-brief operational updates before the RPC", async () => {
+    mocks.engagementQuery.maybeSingle.mockResolvedValueOnce({
+      data: {
+        payment_status: "refunded",
+        vehicle_briefs: [{ engagement_id: validInput.engagementId }],
+        workflow_status: "brief_submitted",
+      },
+      error: null,
+    });
+    await expect(updateEngagementStatus(validInput)).resolves.toEqual({
+      ok: false,
+      error: "Only a paid engagement can receive workflow updates.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    mocks.engagementQuery.maybeSingle.mockResolvedValueOnce({
+      data: {
+        payment_status: "paid",
+        vehicle_briefs: [],
+        workflow_status: "brief_submitted",
+      },
+      error: null,
+    });
+    await expect(updateEngagementStatus(validInput)).resolves.toEqual({
+      ok: false,
+      error: "A submitted vehicle brief is required for that workflow update.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("returns a non-leaking error when the row is missing or the RPC rejects", async () => {
@@ -144,7 +182,11 @@ describe("updateEngagementStatus", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
 
     mocks.engagementQuery.maybeSingle.mockResolvedValueOnce({
-      data: { workflow_status: "brief_submitted" },
+      data: {
+        payment_status: "paid",
+        vehicle_briefs: [{ engagement_id: validInput.engagementId }],
+        workflow_status: "brief_submitted",
+      },
       error: null,
     });
     mocks.rpc.mockResolvedValueOnce({

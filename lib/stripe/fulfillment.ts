@@ -5,11 +5,20 @@ import type Stripe from "stripe";
 import { normalizeEmail } from "../domain/engagement";
 import {
   persistStripeEvent,
+  persistStripeExpiration,
+  persistStripeRefund,
   type PersistStripeEvent,
+  type PersistStripeExpiration,
+  type PersistStripeRefund,
   type StripeEventInput,
 } from "./repository";
 
-export type { PersistStripeEvent, StripeEventInput } from "./repository";
+export type {
+  PersistStripeEvent,
+  PersistStripeExpiration,
+  PersistStripeRefund,
+  StripeEventInput,
+} from "./repository";
 
 type FulfillmentResult = "processed" | "duplicate";
 
@@ -56,6 +65,23 @@ function resultForInserted(inserted: boolean): FulfillmentResult {
   return inserted ? "processed" : "duplicate";
 }
 
+function checkoutIdentity(session: Stripe.Checkout.Session) {
+  if (session.livemode || !session.id.startsWith("cs_test_")) {
+    throw new Error("Only test-mode Checkout Sessions can be processed");
+  }
+  const engagementId = session.metadata?.engagement_id;
+  const priceId = session.metadata?.price_id;
+  if (!engagementId || session.client_reference_id !== engagementId) {
+    throw new Error(
+      "Checkout Session reference does not match engagement metadata",
+    );
+  }
+  if (!priceId) {
+    throw new Error("Checkout Session is missing Price metadata");
+  }
+  return { engagementId, priceId };
+}
+
 export async function fulfillCheckoutSession(
   session: Stripe.Checkout.Session,
   context: EventContext = {
@@ -80,22 +106,10 @@ export async function fulfillCheckoutSession(
     );
   }
 
-  const engagementId = session.metadata?.engagement_id;
-  const priceId = session.metadata?.price_id;
+  const { engagementId, priceId } = checkoutIdentity(session);
   const customerEmail =
     session.customer_details?.email ?? session.customer_email;
 
-  if (!engagementId) {
-    throw new Error("Paid Checkout Session is missing engagement metadata");
-  }
-  if (session.client_reference_id !== engagementId) {
-    throw new Error(
-      "Checkout Session reference does not match engagement metadata",
-    );
-  }
-  if (!priceId) {
-    throw new Error("Paid Checkout Session is missing Price metadata");
-  }
   if (!customerEmail) {
     throw new Error("Paid Checkout Session is missing a customer email");
   }
@@ -132,6 +146,8 @@ export async function fulfillCheckoutSession(
 export async function processEvent(
   event: Stripe.Event,
   persist: PersistStripeEvent = persistStripeEvent,
+  expire: PersistStripeExpiration = persistStripeExpiration,
+  refund: PersistStripeRefund = persistStripeRefund,
 ): Promise<FulfillmentResult> {
   if (event.livemode) {
     throw new Error("Only test-mode Stripe events can be processed");
@@ -149,6 +165,37 @@ export async function processEvent(
       },
       persist,
     );
+  }
+
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const { engagementId, priceId } = checkoutIdentity(session);
+    return resultForInserted(
+      await expire({
+        checkoutSessionId: session.id,
+        engagementId,
+        eventId: event.id,
+        priceId,
+      }),
+    );
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    if (charge.livemode) {
+      throw new Error("Only test-mode Stripe charges can be processed");
+    }
+    if (charge.refunded) {
+      return resultForInserted(
+        await refund({
+          eventId: event.id,
+          paymentIntentId: expandableId(
+            charge.payment_intent,
+            "a PaymentIntent",
+          ),
+        }),
+      );
+    }
   }
 
   return resultForInserted(

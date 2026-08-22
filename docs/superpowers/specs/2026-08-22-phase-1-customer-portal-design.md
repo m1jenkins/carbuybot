@@ -86,9 +86,11 @@ Workflow states are `awaiting_brief`, `brief_submitted`, `in_review`, `searching
 - one draft per engagement
 - validated answer map keyed by intake question ID
 - current question ID
+- protected baseline of the last finalized answers
+- per-revision progress cursor
 - timestamps
 
-Draft rows are customer-owned through their paid engagement and use RLS. Final submission validates the complete answer map, writes the normalized `vehicle_briefs` row, advances workflow, creates the first status update, and removes the draft in one transaction.
+Draft rows are customer-owned through their paid engagement and use RLS. Final submission validates the complete answer map, writes the normalized `vehicle_briefs` row, advances workflow, creates the first status update, and retains the draft with a server-protected finalized baseline. The conversational cursor resets for each revision while the baseline supports changed-content detection and idempotent retries; finalized drafts are not deleted.
 
 ### `status_updates`
 

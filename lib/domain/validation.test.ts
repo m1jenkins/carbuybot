@@ -132,6 +132,11 @@ describe("engagement domain", () => {
     expect(canTransition("brief_submitted", "in_review")).toBe(true);
   });
 
+  it("reserves awaiting-brief submission for customer finalization", () => {
+    expect(canTransition("awaiting_brief", "brief_submitted")).toBe(false);
+    expect(canTransition("awaiting_brief", "cancelled")).toBe(true);
+  });
+
   it("rejects a transition out of a terminal state", () => {
     expect(canTransition("completed", "searching")).toBe(false);
   });
