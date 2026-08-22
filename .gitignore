@@ -1,2 +1,10 @@
 .claude/
 .DS_Store
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
+npm-debug.log*

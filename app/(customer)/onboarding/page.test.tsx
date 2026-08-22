@@ -1,0 +1,292 @@
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => {
+  const engagementQuery = {
+    eq: vi.fn(),
+    in: vi.fn(),
+    limit: vi.fn(),
+    maybeSingle: vi.fn(),
+    order: vi.fn(),
+    select: vi.fn(),
+    then: vi.fn(),
+  };
+  const draftQuery = {
+    eq: vi.fn(),
+    maybeSingle: vi.fn(),
+    select: vi.fn(),
+  };
+  const briefQuery = {
+    eq: vi.fn(),
+    maybeSingle: vi.fn(),
+    select: vi.fn(),
+  };
+
+  return {
+    briefQuery,
+    claimPaidEngagements: vi.fn(),
+    createServerClient: vi.fn(),
+    draftQuery,
+    engagementQuery,
+    from: vi.fn(),
+    getUser: vi.fn(),
+    intakeProps: vi.fn(),
+    redirect: vi.fn(),
+  };
+});
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: mocks.createServerClient,
+}));
+vi.mock("@/lib/supabase/claim", () => ({
+  claimPaidEngagements: mocks.claimPaidEngagements,
+}));
+vi.mock("@/components/onboarding/intake-thread", () => ({
+  IntakeThread: (props: unknown) => {
+    mocks.intakeProps(props);
+    return <div data-testid="intake-thread" />;
+  },
+}));
+
+import OnboardingPage from "./page";
+
+const finalizedBrief = {
+  budget_cents: 6_000_000,
+  city: "Austin",
+  colors: ["Black"],
+  condition: "either",
+  consent: true,
+  deal_breakers: ["No accident history"],
+  financing_preference: "undecided",
+  has_trade_in: false,
+  make: "Genesis",
+  model: "GV80",
+  notes: null,
+  options: ["Advanced package"],
+  postal_code: "78701",
+  search_radius_miles: 100,
+  state: "TX",
+  timeline: "within_30_days",
+  trade_in_details: null,
+  trim: null,
+  year_max: 2026,
+  year_min: 2024,
+};
+const engagementId = "a6204b70-c308-40e8-b87f-30843d48cb79";
+const submittedEngagement = {
+  created_at: "2026-08-21T08:00:00.000Z",
+  id: engagementId,
+  payment_status: "paid",
+  workflow_status: "brief_submitted",
+};
+const reviewEngagement = {
+  created_at: "2026-08-22T08:00:00.000Z",
+  id: "83aca8da-9a4d-4b26-9414-7f444c39fc3d",
+  payment_status: "paid",
+  workflow_status: "in_review",
+};
+const refundedEngagement = {
+  created_at: "2026-08-23T08:00:00.000Z",
+  id: "60d1675a-ca26-4a59-9d15-95cd4f781f8f",
+  payment_status: "refunded",
+  workflow_status: "awaiting_brief",
+};
+
+describe("OnboardingPage brief revision", () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+
+    mocks.engagementQuery.select.mockReturnValue(mocks.engagementQuery);
+    mocks.engagementQuery.eq.mockReturnValue(mocks.engagementQuery);
+    mocks.engagementQuery.in.mockReturnValue(mocks.engagementQuery);
+    mocks.engagementQuery.order.mockReturnValue(mocks.engagementQuery);
+    mocks.engagementQuery.limit.mockReturnValue(mocks.engagementQuery);
+    mocks.engagementQuery.maybeSingle.mockResolvedValue({
+      data: submittedEngagement,
+      error: null,
+    });
+    mocks.engagementQuery.then.mockImplementation((onFulfilled, onRejected) =>
+      Promise.resolve({
+        data: [
+          refundedEngagement,
+          submittedEngagement,
+          reviewEngagement,
+        ],
+        error: null,
+      }).then(onFulfilled, onRejected),
+    );
+
+    mocks.draftQuery.select.mockReturnValue(mocks.draftQuery);
+    mocks.draftQuery.eq.mockReturnValue(mocks.draftQuery);
+    mocks.draftQuery.maybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    mocks.briefQuery.select.mockReturnValue(mocks.briefQuery);
+    mocks.briefQuery.eq.mockReturnValue(mocks.briefQuery);
+    mocks.briefQuery.maybeSingle.mockResolvedValue({
+      data: finalizedBrief,
+      error: null,
+    });
+
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "engagements") return mocks.engagementQuery;
+      if (table === "brief_drafts") return mocks.draftQuery;
+      if (table === "vehicle_briefs") return mocks.briefQuery;
+      throw new Error(`Unexpected table: ${table}`);
+    });
+    mocks.getUser.mockResolvedValue({
+      data: {
+        user: {
+          email: "buyer@example.com",
+          email_confirmed_at: "2026-08-22T00:00:00.000Z",
+          id: "user-1",
+        },
+      },
+      error: null,
+    });
+    mocks.claimPaidEngagements.mockResolvedValue(0);
+    mocks.createServerClient.mockResolvedValue({
+      auth: { getUser: mocks.getUser },
+      from: mocks.from,
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it("maps a submitted brief into the conversational thread for revision", async () => {
+    render(
+      await OnboardingPage({
+        searchParams: Promise.resolve({ engagement: engagementId }),
+      }),
+    );
+
+    expect(mocks.engagementQuery.in).not.toHaveBeenCalled();
+    expect(mocks.engagementQuery.select).toHaveBeenCalledWith(
+      "created_at, id, payment_status, workflow_status",
+    );
+    expect(mocks.engagementQuery.eq).toHaveBeenCalledTimes(1);
+    expect(mocks.engagementQuery.eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(mocks.engagementQuery.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
+    expect(mocks.intakeProps).toHaveBeenCalledWith({
+      engagementId,
+      initialDraft: {
+        budgetCents: 6_000_000,
+        city: "Austin",
+        colors: ["Black"],
+        condition: "either",
+        consent: true,
+        dealBreakers: ["No accident history"],
+        financingPreference: "undecided",
+        hasTradeIn: false,
+        make: "Genesis",
+        model: "GV80",
+        notes: null,
+        options: ["Advanced package"],
+        postalCode: "78701",
+        searchRadiusMiles: 100,
+        state: "TX",
+        timeline: "within_30_days",
+        tradeInDetails: null,
+        trim: null,
+        yearMax: 2026,
+        yearMin: 2024,
+      },
+      initialQuestionId: "condition",
+      revisionMode: true,
+    });
+    expect(screen.getByTestId("intake-thread")).toBeVisible();
+  });
+
+  it("prefers a retained revision draft over the finalized brief", async () => {
+    mocks.draftQuery.maybeSingle.mockResolvedValueOnce({
+      data: {
+        answers: { ...finalizedBrief, make: "Toyota" },
+        current_question_id: "model",
+      },
+      error: null,
+    });
+
+    render(
+      await OnboardingPage({
+        searchParams: Promise.resolve({ engagement: engagementId }),
+      }),
+    );
+
+    expect(mocks.intakeProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialDraft: expect.objectContaining({ make: "Toyota" }),
+        initialQuestionId: "model",
+        revisionMode: true,
+      }),
+    );
+  });
+
+  it("redirects an invalid or unowned selection to the explicit safe default", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: "00000000-0000-4000-8000-999999999999",
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${reviewEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
+  });
+
+  it("returns a selected non-editable engagement to its matching portal", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: reviewEngagement.id,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${reviewEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
+  });
+
+  it("returns an explicitly selected refunded editable workflow to its own portal", async () => {
+    mocks.redirect.mockImplementationOnce(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+
+    await expect(
+      OnboardingPage({
+        searchParams: Promise.resolve({
+          engagement: refundedEngagement.id,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/portal?engagement=${refundedEngagement.id}`,
+    );
+    expect(mocks.draftQuery.select).not.toHaveBeenCalled();
+  });
+});

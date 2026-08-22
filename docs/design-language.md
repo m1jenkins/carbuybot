@@ -74,12 +74,20 @@ holding the photograph, and a `.plate__scrim` gradient that protects type. If a 
 missing or fails to load, JS adds `.plate--noimg` and the built ground shows — the page still reads
 as art-directed rather than broken.
 
-The hero is art-directed per breakpoint: a portrait master for phones and a landscape crop above
+The hero is art-directed per breakpoint: a portrait crop for phones and a landscape crop above
 720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
 actually used.
 
-Photography rules: documentary, cool-dark with warm counterpoints, no faces, and **no
-manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
+Photography rules: documentary, no faces, and **no frame a single maker owns** — badges on
+parked cars are fine, a showroom under its own pylon sign is not. See `media/CREDITS.md` for
+the credit list. Later plates are cool-dark with warm counterpoints; the hero is daylight, an
+open aisle down a lot with the rows facing in.
+
+A bright hero costs more scrim than a dark one, not less, because white type has to hold over
+lit paintwork. The composition does most of that work: the aisle gives the headline and the
+worklog a calm ground, so the gradient only has to carry the eyebrow across the front row. The
+hero also lifts the worklog's timestamp and action off the muted-on-dark tokens, which are
+calibrated against a flat dark ground rather than a photograph in full daylight.
 
 ## Component rules
 
@@ -91,6 +99,9 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 - **Tables:** the three-way comparison is a real `<table>` with a screen-reader-only caption. The
   "us" column is a continuous `--paper-2` band from header to last row. Below 720px it stacks into
   one labelled group per dimension via `data-col` — it never becomes a one-column-at-a-time scroll.
+- **Deal sheet:** the compiled workbook is shown as a spreadsheet in the page’s own materials —
+  lettered columns, a formula bar, sticky dealer names, and teal only on the winning out-the-door
+  figure. Figures are illustrative. The grid may scroll horizontally; it does not become cards.
 - **Negotiation thread:** hairline-separated messages, no chat bubbles. Dealer in `--on-dark-soft`,
   agent in `--on-dark`, and the message where the deal closed carries a 2px teal spine.
 - **Hero worklog:** the artifact on the hero photograph is a typeset record of what the agent did on
@@ -107,6 +118,54 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 - **Forms:** on dark, the email input is a bottom hairline only, no filled box; focus moves the
   hairline to `--money-dark`.
 
+## Conversational intake
+
+The vehicle brief is a durable interaction pattern, not a themed form or chatbot simulation.
+Keep one current question prominent while retaining committed prompts and answers as readable
+context. A neutral hairline progress track and plain “Question N of M” copy provide orientation;
+they do not divide the flow into card-like pages.
+
+- Incoming prompts remain unboxed and left aligned. Committed customer answers sit to the right
+  on near-black, with teal used only when the answer itself is a budget or other money value.
+- Use quick replies for constrained choices and a labelled bottom composer for free text. Preserve
+  keyboard submission, visible validation, predictable focus, and screen-reader status updates.
+- Save an answer before advancing in the real product. In local review fixtures, keep interaction
+  in memory and explicitly say that nothing is saved.
+- No fake activity appears: never add typing delays, online indicators, bot avatars, personality
+  filler, or invented progress. The transcript represents only confirmed customer input.
+
+Approved production references establish the hierarchy without dictating CarBuyerBots chrome:
+[Speak’s one-question composer](https://mobbin.com/screens/c865f950-a4e6-49a9-853f-bcedba94fc15)
+keeps one prompt, progress, and composer legible together;
+[Cleo’s persistent onboarding thread](https://mobbin.com/screens/2c28f1dd-5d34-4aa8-ae74-3ebe71f7cc4f)
+shows why prior turns should remain available as context. CarBuyerBots removes their mascots,
+gradients, novelty copy, and decorative navigation.
+
+## Customer portal
+
+- Lead with the current workflow stage and one factual next step. Status uses neutral typography,
+  labels, whitespace, and hairline progress/timeline rules—never colorful status chips.
+- The payment amount is the only prominent teal value. Payment state, workflow state, navigation,
+  buttons, and progress remain ink/graphite unless the text itself is a money amount.
+- Show the submitted brief, payment and engagement references, and customer-visible updates as a
+  record. Do not imply that work is happening between confirmed updates.
+- Multiple engagements use a simple hairline switcher. Mobile layouts stack labelled values without
+  hiding identifiers or introducing horizontal scrolling.
+- Empty and error states say what is known, what is unavailable, and whether anything changed.
+
+## Admin review
+
+- Queue counts come from exact stored records. Filters, search, sort, pagination, and range copy
+  must agree with the returned page; an out-of-range page canonicalizes to the final real page.
+- Tables collapse into labelled block rows below the mobile breakpoint. Keep the semantic table and
+  clipped column headers for assistive technology; do not replace it with unrelated cards.
+- Detail pages separate customer, payment, brief, history, and controlled-update sections with
+  whitespace and hairlines. Workflow status remains neutral typography.
+- Every operational update requires a valid transition plus concrete customer-visible title and
+  note. Never prefill an update, synthesize a timeline entry, or show fake activity.
+- Teal remains money-only: fee amounts may use it; paid badges, queue states, workflow controls,
+  success messages, and navigation may not.
+
 ## Copy rules
 
 - Plain and concrete. Short sentences. Say the number.
@@ -122,5 +181,5 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
 - Serif type, or display type above weight 500
 - Teal on anything that is not money
 - Feature-icon grids, plan cards, floating product screenshots, hero UI mockups
-- Manufacturer logos in photography
+- Photography a single manufacturer owns — its showroom, facade, signage or an all-one-marque row
 - Unlabeled illustrative figures
