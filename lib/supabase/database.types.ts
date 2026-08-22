@@ -53,6 +53,38 @@ export type Database = {
           },
         ];
       };
+      brief_drafts: {
+        Row: {
+          answers: Json;
+          created_at: string;
+          current_question_id: string | null;
+          engagement_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          answers?: Json;
+          created_at?: string;
+          current_question_id?: string | null;
+          engagement_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          answers?: Json;
+          created_at?: string;
+          current_question_id?: string | null;
+          engagement_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "brief_drafts_engagement_id_fkey";
+            columns: ["engagement_id"];
+            isOneToOne: true;
+            referencedRelation: "engagements";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       engagements: {
         Row: {
           amount_cents: number;
@@ -334,6 +366,14 @@ export type Database = {
           p_fulfill: boolean;
           p_payment_intent_id: string | null;
           p_price_id: string | null;
+        };
+        Returns: boolean;
+      };
+      finalize_vehicle_brief: {
+        Args: {
+          p_brief: Json;
+          p_engagement_id: string;
+          p_user_id: string;
         };
         Returns: boolean;
       };

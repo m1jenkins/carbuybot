@@ -8,10 +8,12 @@ import { createBrowserClient } from "@/lib/supabase/browser";
 
 type MagicLinkFormProps = {
   defaultEmail?: string;
+  destination?: string;
 };
 
 export function MagicLinkForm({
   defaultEmail = "",
+  destination = "/onboarding",
 }: MagicLinkFormProps) {
   const [email, setEmail] = useState(defaultEmail);
   const [message, setMessage] = useState("");
@@ -26,9 +28,15 @@ export function MagicLinkForm({
 
     try {
       const normalizedEmail = normalizeEmail(email);
+      const safeDestination =
+        destination.startsWith("/") &&
+        !destination.startsWith("//") &&
+        !destination.includes("\\")
+          ? destination
+          : "/onboarding";
       const redirectUrl =
         `${window.location.origin}/auth/callback?next=` +
-        encodeURIComponent("/onboarding");
+        encodeURIComponent(safeDestination);
       const { error } = await createBrowserClient().auth.signInWithOtp({
         email: normalizedEmail,
         options: {

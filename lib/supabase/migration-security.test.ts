@@ -29,6 +29,20 @@ const stripeFulfillmentMigration = stripeFulfillmentMigrationName
     )
   : "";
 const normalizedStripeSql = stripeFulfillmentMigration.replace(/\s+/g, " ");
+const conversationalIntakeMigrationName = readdirSync(
+  join(process.cwd(), "supabase/migrations"),
+).find((name) => name.endsWith("_conversational_intake.sql"));
+const conversationalIntakeMigration = conversationalIntakeMigrationName
+  ? readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations",
+        conversationalIntakeMigrationName,
+      ),
+      "utf8",
+    )
+  : "";
+const normalizedIntakeSql = conversationalIntakeMigration.replace(/\s+/g, " ");
 const emailAuthConfig = config.match(
   /\[auth\.email\]([\s\S]*?)(?=\n\[|$)/,
 )?.[1];
@@ -153,6 +167,91 @@ describe("database/domain constraint parity", () => {
     );
     expect(normalizedSql).toContain(
       "check (private.is_valid_brief_text_array(deal_breakers))",
+    );
+  });
+});
+
+describe("conversational intake security", () => {
+  it("protects paid customer drafts with RLS and least-privilege grants", () => {
+    expect(normalizedIntakeSql).toContain(
+      "create table public.brief_drafts (",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "alter table public.brief_drafts enable row level security;",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "revoke all on table public.brief_drafts from anon, authenticated;",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "grant select, insert on table public.brief_drafts to authenticated;",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "grant update (answers, current_question_id, updated_at) on table public.brief_drafts to authenticated;",
+    );
+    expect(normalizedIntakeSql).not.toContain(
+      "grant select, insert, update on table public.brief_drafts to authenticated;",
+    );
+    expect(normalizedIntakeSql).not.toContain(
+      "grant delete on table public.brief_drafts to authenticated;",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "engagements.user_id = (select auth.uid())",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "engagements.payment_status = 'paid'",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "engagements.workflow_status = 'awaiting_brief'",
+    );
+  });
+
+  it("keeps finalization service-role only and transactional", () => {
+    expect(normalizedIntakeSql).toContain(
+      "create or replace function public.finalize_vehicle_brief(",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "security invoker set search_path = ''",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "revoke all on function public.finalize_vehicle_brief(uuid, uuid, jsonb) from public, anon, authenticated;",
+    );
+    expect(normalizedIntakeSql).toContain(
+      "grant execute on function public.finalize_vehicle_brief(uuid, uuid, jsonb) to service_role;",
+    );
+
+    const finalizationFunction = normalizedIntakeSql.match(
+      /create or replace function public\.finalize_vehicle_brief\([\s\S]*?\$\$;/,
+    )?.[0];
+    expect(finalizationFunction).toBeDefined();
+    expect(finalizationFunction).not.toContain("security definer");
+    expect(finalizationFunction).toContain("for update");
+    expect(finalizationFunction).toContain("payment_status = 'paid'");
+    expect(finalizationFunction).toContain(
+      "workflow_status = 'awaiting_brief'",
+    );
+    expect(finalizationFunction).toContain(
+      "insert into public.vehicle_briefs",
+    );
+    expect(finalizationFunction).toContain("on conflict (engagement_id)");
+    expect(finalizationFunction).toContain("update public.engagements");
+    expect(finalizationFunction).toContain(
+      "insert into public.status_updates",
+    );
+    expect(finalizationFunction).toContain(
+      "delete from public.brief_drafts",
+    );
+    expect(
+      finalizationFunction!.indexOf("insert into public.vehicle_briefs"),
+    ).toBeLessThan(finalizationFunction!.indexOf("update public.engagements"));
+    expect(
+      finalizationFunction!.indexOf("update public.engagements"),
+    ).toBeLessThan(
+      finalizationFunction!.indexOf("insert into public.status_updates"),
+    );
+    expect(
+      finalizationFunction!.indexOf("insert into public.status_updates"),
+    ).toBeLessThan(
+      finalizationFunction!.indexOf("delete from public.brief_drafts"),
     );
   });
 });
