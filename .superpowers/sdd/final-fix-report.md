@@ -148,3 +148,136 @@ Result: both exit 0.
   `docs/superpowers/plans/2026-08-22-phase-1-customer-portal.md`. That prohibited
   planning artifact was intentionally not modified. The complete final-fix
   range and working-tree diff checks are clean.
+
+## Remaining Important findings — 2026-08-22
+
+### Status and commits
+
+Implemented the two follow-up findings without switching branches, pushing,
+applying a remote migration, or modifying planning artifacts:
+
+- `eb05473 Preserve pending engagement callback context`
+- `c422926 Make Checkout reservations retry-safe`
+- `908b5c8 Test exact engagement refresh after fulfillment`
+
+The additive migration was created after checking the current CLI help:
+
+```text
+npx supabase migration new --help
+npx supabase migration new harden_checkout_reservations
+```
+
+Created:
+`supabase/migrations/20260822103250_harden_checkout_reservations.sql`
+
+The verified paid Checkout Session now supplies its metadata engagement UUID
+to the magic-link destination only when it is a valid UUID and matches the
+Session client reference. Callback and portal processing flows preserve that
+specific safe internal target. A missing target is not replaced by an older
+visible engagement; after reconciliation makes the target RLS-visible, refresh
+loads that exact engagement. The UUID is never displayed as account data and
+never grants access.
+
+Checkout creation now uses
+`checkout-engagement-<engagement UUID>` as the Stripe idempotency key. The
+reservation transaction reuses a same-email pending row created within 23
+hours under the existing allocation lock. The server attaches the returned
+`cs_test_…` Session ID transactionally and idempotently before returning its
+URL. Only Stripe invalid-request, authentication, and permission errors invoke
+the service-role-only unattached-reservation failure RPC. Connection, timeout,
+rate-limit, generic, attachment, and unknown failures retain the reservation
+for retry or manual reconciliation. Expiration remains the cleanup path for
+attached pending Sessions; paid and refunded slots remain durable.
+
+Landing and setup wording now assigns the introductory price to the first 100
+Checkout reservations. Setup documentation requires infrastructure rate
+limits and documents pre-launch inspection and reconciliation of ambiguous
+pending reservations.
+
+### TDD and verification evidence
+
+Initial focused RED:
+
+```text
+npm test -- --run "app/checkout/checkout-pages.test.tsx" "app/auth/callback/route.test.ts" "app/(customer)/portal/page.test.tsx" "app/api/checkout/route.test.ts" "lib/stripe/repository.test.ts" "lib/supabase/migration-runtime.test.ts" "lib/supabase/migration-security.test.ts"
+```
+
+Result: expected exit 1; 7 files failed; 16 tests failed and 75 passed. The
+failures reproduced older-engagement fallback, missing metadata destination,
+duplicate same-email reservations, absent Stripe idempotency/attachment,
+missing definitive failure release, and missing RPC grants.
+
+Callback GREEN:
+
+```text
+npm test -- --run "app/checkout/checkout-pages.test.tsx" "app/auth/callback/route.test.ts" "app/(customer)/portal/page.test.tsx"
+```
+
+Result: exit 0; 3 files passed; 26 tests passed.
+
+Reservation GREEN:
+
+```text
+npm test -- --run "app/api/checkout/route.test.ts" "lib/stripe/repository.test.ts" "lib/supabase/migration-runtime.test.ts" "lib/supabase/migration-security.test.ts"
+```
+
+Result: exit 0; 4 files passed; 65 tests passed.
+
+Combined focused GREEN:
+
+```text
+npm test -- --run "app/checkout/checkout-pages.test.tsx" "app/auth/callback/route.test.ts" "app/(customer)/portal/page.test.tsx" "app/api/checkout/route.test.ts" "lib/stripe/repository.test.ts" "lib/stripe/stripe.test.ts" "lib/supabase/migration-runtime.test.ts" "lib/supabase/migration-security.test.ts" "components/landing/landing-page.test.tsx"
+```
+
+Result: exit 0; 9 files passed; 122 tests passed.
+
+Exact-target self-review:
+
+```text
+npm test -- --run "app/(customer)/portal/page.test.tsx"
+```
+
+Result: exit 0; 1 file passed; 9 tests passed, including refresh selecting the
+newly visible exact engagement rather than an older row.
+
+```text
+npm test
+```
+
+Result: exit 0; 33 files passed; 264 tests passed.
+
+```text
+npm run lint
+npm run typecheck
+npm run build
+npm ls --all
+```
+
+Results: all exit 0. ESLint reported no findings; `tsc --noEmit` was clean;
+Next.js 16.3.2 compiled and generated all pages; npm resolved the dependency
+tree with the same optional-platform and pre-existing extraneous package notes
+recorded above.
+
+```text
+git diff --check
+```
+
+Result before report append: exit 0.
+
+### Security notes and concerns
+
+- Raw-body Stripe signature verification, event/object test-mode guards,
+  immutable amount/currency/Price checks, and one-time `mode: "payment"`
+  Checkout remain unchanged.
+- No Tax, invoice, subscription, saved-payment-method, or Connect behavior was
+  added.
+- All reservation lifecycle RPCs are fixed-search-path `security invoker`
+  functions revoked from public browser roles and granted only to
+  `service_role`; PGlite verifies authenticated denial.
+- No hosted Stripe or Supabase environment was connected, so remote migration
+  and end-to-end sandbox delivery were not run. Route, static security, and
+  PGlite transaction tests cover the paths locally without taking a charge.
+- Infrastructure rate limiting remains a deployment prerequisite, not an
+  application feature in this change. Pending rows older than the 23-hour
+  retry window require the documented Stripe-log reconciliation before any
+  manual release.
