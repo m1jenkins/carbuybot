@@ -16,14 +16,14 @@ with eligible as (
         case when payment_status in ('paid', 'refunded') then 0 else 1 end,
         created_at,
         id
-    )::smallint as slot
+    ) as slot
   from public.engagements
   where payment_status in ('pending', 'paid', 'refunded')
     and amount_cents = 34900
     and currency = 'usd'
 )
 update public.engagements as engagements
-set intro_slot = eligible.slot
+set intro_slot = eligible.slot::smallint
 from eligible
 where engagements.id = eligible.id
   and eligible.slot between 1 and 100;

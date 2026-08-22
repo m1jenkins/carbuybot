@@ -76,7 +76,10 @@ export async function updateEngagementStatus(
   }
 
   try {
-    validateTransition(currentStatus.data, parsed.data.nextStatus);
+    validateTransition(currentStatus.data, parsed.data.nextStatus, {
+      hasBrief,
+      paymentStatus: engagement.payment_status,
+    });
   } catch {
     return {
       ok: false,

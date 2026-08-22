@@ -169,6 +169,11 @@ export async function processEvent(
 
   if (event.type === "checkout.session.expired") {
     const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode !== "payment") {
+      return resultForInserted(
+        await persist(eventOnlyInput(event.id, event.type)),
+      );
+    }
     const { engagementId, priceId } = checkoutIdentity(session);
     return resultForInserted(
       await expire({

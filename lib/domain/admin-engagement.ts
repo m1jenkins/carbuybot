@@ -18,6 +18,11 @@ export const adminStatusUpdateSchema = z
 
 export type AdminStatusUpdateInput = z.input<typeof adminStatusUpdateSchema>;
 
+export type AdminTransitionContext = {
+  hasBrief: boolean;
+  paymentStatus: "failed" | "paid" | "pending" | "refunded";
+};
+
 export const workflowLabels: Record<WorkflowStatus, string> = {
   awaiting_brief: "Awaiting brief",
   brief_submitted: "Needs review",
@@ -32,14 +37,27 @@ export const workflowLabels: Record<WorkflowStatus, string> = {
 export function validateTransition(
   from: WorkflowStatus,
   to: WorkflowStatus,
+  context: AdminTransitionContext,
 ): void {
-  if (!canTransition(from, to)) {
+  if (
+    context.paymentStatus !== "paid" ||
+    (to !== "cancelled" && !context.hasBrief) ||
+    !canTransition(from, to)
+  ) {
     throw new Error("That workflow transition is not allowed.");
   }
 }
 
 export function getAllowedTransitions(
   from: WorkflowStatus,
+  context: AdminTransitionContext,
 ): WorkflowStatus[] {
-  return workflowStatuses.filter((status) => canTransition(from, status));
+  return workflowStatuses.filter((status) => {
+    try {
+      validateTransition(from, status, context);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }

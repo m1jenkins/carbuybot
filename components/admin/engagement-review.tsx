@@ -112,7 +112,10 @@ export function EngagementReview({
   statusAction,
   updates,
 }: EngagementReviewProps) {
-  const nextStatuses = getAllowedTransitions(engagement.workflowStatus);
+  const nextStatuses = getAllowedTransitions(engagement.workflowStatus, {
+    hasBrief: brief !== null,
+    paymentStatus: engagement.paymentStatus,
+  });
   const [result, formAction, pending] = useActionState<
     StatusActionResult | null,
     FormData

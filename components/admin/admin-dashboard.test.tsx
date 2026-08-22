@@ -229,8 +229,11 @@ describe("admin engagement review", () => {
   });
 
   it("rejects an impossible workflow transition", () => {
-    expect(() => validateTransition("completed", "searching")).toThrow(
-      /not allowed/i,
-    );
+    expect(() =>
+      validateTransition("completed", "searching", {
+        hasBrief: true,
+        paymentStatus: "paid",
+      }),
+    ).toThrow(/not allowed/i);
   });
 });
