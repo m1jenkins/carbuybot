@@ -247,7 +247,9 @@ git commit -m "Add verified Stripe Checkout fulfillment"
 - Create: `components/onboarding/intake-thread.tsx`
 - Create: `components/onboarding/intake-thread.test.tsx`
 - Create: `components/onboarding/intake-questions.ts`
-- Create: `middleware.ts`
+- Create: `supabase/migrations/*_conversational_intake.sql` via `supabase migration new conversational_intake`
+- Modify: `lib/supabase/database.types.ts`
+- Create: `proxy.ts`
 
 **Interfaces:**
 - Consumes: `claimPaidEngagements(userId, verifiedEmail)`
@@ -294,7 +296,7 @@ Show one active incoming prompt at a time. Render committed customer answers as 
 
 Use the actual-preview references recorded in the design spec: Cleo for persistent conversational context, Speak for one-question focus and composer, Alan for readable accumulated turns, and Paired for question position plus thread continuity. Rebuild those interaction strengths using the existing warm paper, ink, Inter, hairline, and money-only teal rules.
 
-On final confirmation, validate the complete brief, upsert `vehicle_briefs`, set `onboarding_completed_at`, transition to `brief_submitted`, and insert the first customer-visible status update in one server action.
+Create an RLS-protected `brief_drafts` table so each accepted answer persists before the next prompt. On final confirmation, use a service-role-only security-invoker RPC to validate ownership and paid state, upsert `vehicle_briefs`, set `onboarding_completed_at`, transition to `brief_submitted`, insert the first customer-visible status update, and remove the draft in one transaction.
 
 - [ ] **Step 5: Run onboarding tests**
 
@@ -305,7 +307,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/auth app/sign-in app/\(customer\) components/onboarding middleware.ts
+git add app/auth app/sign-in app/\(customer\) components/onboarding proxy.ts supabase/migrations lib/supabase/database.types.ts
 git commit -m "Add magic-link onboarding flow"
 ```
 

@@ -81,6 +81,15 @@ Workflow states are `awaiting_brief`, `brief_submitted`, `in_review`, `searching
 - consent confirmation
 - timestamps
 
+### `brief_drafts`
+
+- one draft per engagement
+- validated answer map keyed by intake question ID
+- current question ID
+- timestamps
+
+Draft rows are customer-owned through their paid engagement and use RLS. Final submission validates the complete answer map, writes the normalized `vehicle_briefs` row, advances workflow, creates the first status update, and removes the draft in one transaction.
+
 ### `status_updates`
 
 - engagement
