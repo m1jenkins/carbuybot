@@ -103,6 +103,28 @@ export async function GET(request: Request) {
     const requestedEngagementId = normalizeRequestedEngagementId(
       requestedDestination.searchParams.get("engagement") ?? undefined,
     );
+    const isRequestedProcessingEngagement =
+      requestedDestination.pathname === "/portal" &&
+      requestedDestination.searchParams.get("payment") === "processing" &&
+      requestedDestination.searchParams.has("engagement");
+    const requestedEngagement = requestedEngagementId
+      ? (engagements ?? []).find(
+          (candidate) => candidate.id === requestedEngagementId,
+        )
+      : null;
+
+    if (isRequestedProcessingEngagement && !requestedEngagement) {
+      const processingDestination = new URL("/portal", requestUrl.origin);
+      if (requestedEngagementId) {
+        processingDestination.searchParams.set(
+          "engagement",
+          requestedEngagementId,
+        );
+      }
+      processingDestination.searchParams.set("payment", "processing");
+      return NextResponse.redirect(processingDestination);
+    }
+
     const engagement = selectCustomerEngagement(
       engagements ?? [],
       requestedEngagementId,

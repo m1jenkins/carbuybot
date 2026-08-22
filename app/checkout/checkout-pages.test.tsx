@@ -41,10 +41,14 @@ describe("Checkout result pages", () => {
   it("shows paid display context and the prefilled magic-link form", async () => {
     mocks.retrieve.mockResolvedValue({
       amount_total: 34_900,
+      client_reference_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
       currency: "usd",
       customer_details: { email: "buyer@example.com" },
       customer_email: null,
       id: "cs_test_paid_fixture_123",
+      metadata: {
+        engagement_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      },
       mode: "payment",
       payment_status: "paid",
     });
@@ -66,10 +70,39 @@ describe("Checkout result pages", () => {
     );
     expect(screen.getByTestId("magic-link")).toHaveAttribute(
       "data-destination",
-      "/portal?payment=processing",
+      "/portal?engagement=a6204b70-c308-40e8-b87f-30843d48cb79&payment=processing",
     );
     expect(mocks.retrieve).toHaveBeenCalledWith(
       "cs_test_paid_fixture_123",
+    );
+  });
+
+  it("does not carry malformed or mismatched engagement metadata", async () => {
+    mocks.retrieve.mockResolvedValue({
+      amount_total: 34_900,
+      client_reference_id: "a6204b70-c308-40e8-b87f-30843d48cb79",
+      currency: "usd",
+      customer_details: { email: "buyer@example.com" },
+      customer_email: null,
+      id: "cs_test_paid_fixture_123",
+      metadata: {
+        engagement_id: "00000000-0000-4000-8000-999999999999",
+      },
+      mode: "payment",
+      payment_status: "paid",
+    });
+
+    render(
+      await SuccessPage({
+        searchParams: Promise.resolve({
+          session_id: "cs_test_paid_fixture_123",
+        }),
+      }),
+    );
+
+    expect(screen.getByTestId("magic-link")).toHaveAttribute(
+      "data-destination",
+      "/portal?payment=processing",
     );
   });
 

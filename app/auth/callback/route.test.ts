@@ -167,6 +167,28 @@ describe("magic-link callback", () => {
     );
   });
 
+  it("preserves a returning customer's specific processing engagement before its webhook is visible", async () => {
+    const pendingEngagementId = "00000000-0000-4000-8000-999999999999";
+    const response = await GET(
+      new Request(
+        `https://carbuyerbots.com/auth/callback?code=auth-code&next=${encodeURIComponent(
+          `/portal?engagement=${pendingEngagementId}&payment=processing`,
+        )}`,
+      ),
+    );
+
+    expect(mocks.claimPaidEngagements).toHaveBeenCalledWith(
+      "user_1",
+      "buyer@example.com",
+    );
+    expect(response.headers.get("location")).toBe(
+      `https://carbuyerbots.com/portal?engagement=${pendingEngagementId}&payment=processing`,
+    );
+    expect(response.headers.get("location")).not.toContain(
+      awaitingEngagement.id,
+    );
+  });
+
   it("carries an owned engagement selection through the callback", async () => {
     const response = await GET(
       new Request(

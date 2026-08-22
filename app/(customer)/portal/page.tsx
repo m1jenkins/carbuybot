@@ -100,6 +100,13 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   const requestedEngagementId = normalizeRequestedEngagementId(
     params.engagement,
   );
+  const paymentState = Array.isArray(params.payment)
+    ? params.payment[0]
+    : params.payment;
+  const hasRequestedEngagementContext = params.engagement !== undefined;
+  const processingHref = requestedEngagementId
+    ? `/portal?engagement=${requestedEngagementId}&payment=processing`
+    : "/portal?payment=processing";
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -107,9 +114,12 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   } = await supabase.auth.getUser();
 
   if (authError || !user?.email || !user.email_confirmed_at) {
-    const next = requestedEngagementId
-      ? `/portal?engagement=${requestedEngagementId}`
-      : "/portal";
+    const next =
+      paymentState === "processing"
+        ? processingHref
+        : requestedEngagementId
+          ? `/portal?engagement=${requestedEngagementId}`
+          : "/portal";
     redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
@@ -120,7 +130,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       <PortalMessage
         title="We could not reconcile your payment."
         description="Refresh the page to securely check again. No portal access was granted or changed."
-        actionHref="/portal?payment=processing"
+        actionHref={processingHref}
         actionLabel="Check payment status"
       />
     );
@@ -144,21 +154,39 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   }
 
   const engagements = orderCustomerEngagements(visibleEngagements ?? []);
+  const requestedEngagementIsVisible =
+    requestedEngagementId !== null &&
+    engagements.some(
+      (candidate) => candidate.id === requestedEngagementId,
+    );
+
+  if (
+    paymentState === "processing" &&
+    hasRequestedEngagementContext &&
+    !requestedEngagementIsVisible
+  ) {
+    return (
+      <PortalMessage
+        title="Payment is still processing."
+        description="The verified webhook has not linked this paid engagement yet. This Checkout display does not grant portal access. Check again after Stripe finishes processing."
+        actionHref={processingHref}
+        actionLabel="Check payment status"
+      />
+    );
+  }
+
   const engagement = selectCustomerEngagement(
     engagements,
     requestedEngagementId,
   );
 
   if (!engagement) {
-    const paymentState = Array.isArray(params.payment)
-      ? params.payment[0]
-      : params.payment;
     if (paymentState === "processing") {
       return (
         <PortalMessage
           title="Payment is still processing."
           description="The verified webhook has not linked a paid engagement yet. This Checkout display does not grant portal access. Check again after Stripe finishes processing."
-          actionHref="/portal?payment=processing"
+          actionHref={processingHref}
           actionLabel="Check payment status"
         />
       );

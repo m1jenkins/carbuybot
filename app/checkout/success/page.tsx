@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { normalizeRequestedEngagementId } from "@/lib/domain/engagement-selection";
 import { getStripe } from "@/lib/stripe/client";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,14 @@ export default async function SuccessPage({
   const amount = session
     ? formatAmount(session.amount_total, session.currency)
     : null;
+  const metadataEngagementId = normalizeRequestedEngagementId(
+    session?.metadata?.engagement_id,
+  );
+  const processingDestination =
+    metadataEngagementId &&
+    session?.client_reference_id === metadataEngagementId
+      ? `/portal?engagement=${metadataEngagementId}&payment=processing`
+      : "/portal?payment=processing";
 
   return (
     <main className="result-page dark">
@@ -68,7 +77,7 @@ export default async function SuccessPage({
             </p>
             <MagicLinkForm
               defaultEmail={email}
-              destination="/portal?payment=processing"
+              destination={processingDestination}
             />
           </section>
         ) : session && !isPaymentSession ? (

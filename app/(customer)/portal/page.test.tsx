@@ -282,6 +282,52 @@ describe("PortalPage", () => {
     ).toBeVisible();
   });
 
+  it("does not replace a requested processing engagement with an older visible engagement", async () => {
+    const pendingEngagementId = "00000000-0000-4000-8000-999999999999";
+
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: pendingEngagementId,
+          payment: "processing",
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /payment is still processing/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /check payment status/i }),
+    ).toHaveAttribute(
+      "href",
+      `/portal?engagement=${pendingEngagementId}&payment=processing`,
+    );
+    expect(mocks.briefQuery.eq).not.toHaveBeenCalled();
+    expect(mocks.updatesQuery.eq).not.toHaveBeenCalled();
+    expect(screen.queryByText(pendingEngagementId)).not.toBeInTheDocument();
+  });
+
+  it("shows no record details for malformed processing engagement context", async () => {
+    render(
+      await PortalPage({
+        searchParams: Promise.resolve({
+          engagement: "not-a-valid-id",
+          payment: "processing",
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /payment is still processing/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /check payment status/i }),
+    ).toHaveAttribute("href", "/portal?payment=processing");
+    expect(mocks.briefQuery.eq).not.toHaveBeenCalled();
+    expect(screen.queryByText("not-a-valid-id")).not.toBeInTheDocument();
+  });
+
   it("renders setup guidance without creating a client when config is missing", async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
