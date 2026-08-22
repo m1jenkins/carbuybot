@@ -67,6 +67,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 /* ── layout primitives ─────────────────────────────────────────────── */
 .wrap{max-width:var(--max);margin:0 auto;padding-inline:var(--gut)}
 .sec{padding-block:var(--sec)}
+.sec--tight{padding-block:clamp(46px,5vw,78px)}
 .dark{background:var(--ink-2);color:var(--on-dark)}
 .dark p{color:var(--on-dark-soft)}
 .rule-top{border-top:1px solid var(--rule)}
@@ -76,7 +77,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .d2{font-size:clamp(31px,4.5vw,58px);font-weight:400;line-height:1.04;letter-spacing:-.03em;text-wrap:balance}
 .d3{font-size:clamp(21px,2.3vw,28px);font-weight:500;line-height:1.22;letter-spacing:-.018em}
 .lede{font-size:clamp(17px,1.5vw,20px);line-height:1.52;color:var(--graphite);text-wrap:pretty}
-.dark .lede{color:var(--on-dark-soft)}
+.dark .lede,.plate .lede{color:rgba(242,241,238,.9)}
 .prose{max-width:var(--read);text-wrap:pretty}
 .prose p+p{margin-top:1.15em}
 
@@ -176,7 +177,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero .label{color:rgba(242,241,238,.74);text-wrap:balance}
 .hero .d1{max-width:min(14ch,100%);margin-top:18px;font-size:clamp(36px,5.2vw,76px)}
 .hero .d1 span{display:block}
-.hero .lede{max-width:min(36ch,100%);margin-top:22px;color:rgba(242,241,238,.88);overflow-wrap:break-word}
+.hero .lede{max-width:min(36ch,100%);margin-top:22px;overflow-wrap:break-word}
 .hero-act{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;margin-top:32px}
 
 /* live email thread — the product artifact, on the photograph */
@@ -255,10 +256,9 @@ html:not(.js) .hero-demo .msg--close{border-left-color:var(--money-dark)}
 .rail span{display:block;margin-top:5px;font-size:13px;color:var(--on-dark-mute)}
 
 /* ── statement ─────────────────────────────────────────────────────── */
-.stmt{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:clamp(32px,6vw,96px)}
-.stmt__l{align-self:start;position:sticky;top:118px;display:grid;gap:20px}
-.stmt__r{font-size:clamp(16.5px,1.25vw,18px);line-height:1.62;color:var(--graphite);max-width:60ch}
-.stmt__r p+p{margin-top:1.15em}
+.stmt{display:grid;grid-template-columns:minmax(0,.6fr) minmax(0,1fr);gap:clamp(18px,4vw,64px);align-items:start}
+.stmt__l{display:grid;gap:12px}
+.stmt__r{font-size:15.5px;line-height:1.6;color:var(--graphite);max-width:62ch;text-wrap:pretty}
 .stmt__r strong{color:var(--ink);font-weight:500}
 
 /* ── steps (documentary photo blocks) ──────────────────────────────── */
@@ -475,9 +475,11 @@ table.cmp .cost{font-size:17px;letter-spacing:-.015em;font-variant-numeric:tabul
   radial-gradient(90% 70% at 76% 4%, #3A434A 0%, rgba(58,67,74,0) 62%),
   radial-gradient(70% 54% at 12% 28%, #46392B 0%, rgba(70,57,43,0) 60%),
   linear-gradient(180deg,#191D20 0%,#0E1113 58%,#08090A 100%)}
-.close .plate__scrim{background:linear-gradient(180deg,rgba(8,9,10,.5) 0%,rgba(8,9,10,.26) 34%,rgba(8,9,10,.9) 100%)}
+.close .plate__scrim{background:linear-gradient(180deg,rgba(8,9,10,.58) 0%,rgba(8,9,10,.34) 30%,rgba(8,9,10,.94) 72%,rgba(8,9,10,.97) 100%)}
 .close .plate__body{width:100%;padding-block:clamp(48px,8vh,92px)}
+.close .label{color:rgba(242,241,238,.78)}
 .close .d2{max-width:19ch;margin-top:20px}
+.close .fnote{color:rgba(242,241,238,.82)}
 .form{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;margin-top:34px;max-width:620px}
 .form label{flex:1 1 260px;display:block}
 .form .label{margin-bottom:11px}
@@ -867,7 +869,7 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .portal-payment__details>div:nth-child(odd){padding-left:0;border-left:0}
   .hdr nav{display:none}
   .stmt,.ev,.price{grid-template-columns:1fr}
-  .stmt__l,.ev__rail{position:static}
+  .ev__rail{position:static}
   .offers{grid-template-columns:1fr}
   .offer--best{border-top:0;border-left:3px solid var(--ink)}
   .trio{grid-template-columns:1fr}

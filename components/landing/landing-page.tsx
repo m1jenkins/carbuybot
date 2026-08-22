@@ -117,35 +117,8 @@ export function LandingPage() {
           </div>
         </div>
 
-        {/* Statement */}
-        <section className="sec">
-          <div className="wrap stmt">
-            <div className="stmt__l rv">
-              <span className="label">Who we work for</span>
-              <h2 className="d2">One side of the table.</h2>
-            </div>
-            <div className="stmt__r rv" style={{ "--d": "90ms" } as CSSProperties}>
-              <p>
-                Almost everyone else in a car deal is paid by the dealership. The lead site that sold your email.
-                The finance office selling the warranty. Even the broker who takes a fee from you and a spiff
-                from them.
-              </p>
-              <p>
-                <strong>We are paid by you, once, and by nobody else.</strong> That one fact decides how the
-                service behaves: what your agent asks for, when it walks away, and why it will tell you a deal
-                is worse than the one you already have.
-              </p>
-              <p>
-                Your agent gives its name, says it is buying on your behalf, and says it is an AI. It never
-                pretends to be you. It negotiates over email, so you keep the paper trail. You review the
-                numbers and you sign them. We never take title to a car and we never touch your money.
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* How it works */}
-        <section className="sec rule-top" id="how">
+        <section className="sec" id="how">
           <div className="wrap">
             <div className="head rv">
               <span className="label">How it works</span>
@@ -474,6 +447,24 @@ export function LandingPage() {
                 <p className="answer">We use your details to run your negotiation and nothing else. We don&rsquo;t sell
                   them, and dealers see only what a purchase actually requires.</p>
               </details>
+            </div>
+          </div>
+        </section>
+
+        {/* Statement */}
+        <section className="sec sec--tight rule-top">
+          <div className="wrap stmt">
+            <div className="stmt__l rv">
+              <span className="label">Who we work for</span>
+              <h2 className="d3">One side of the table.</h2>
+            </div>
+            <div className="stmt__r rv" style={{ "--d": "90ms" } as CSSProperties}>
+              <p>
+                Almost everyone else in a car deal is paid by the dealership &mdash; the lead site that sold your
+                email, the finance office selling the warranty, even the broker who takes a fee from you and a
+                spiff from them. <strong>We are paid by you, once, and by nobody else</strong>, which is why your
+                agent will tell you a deal is worse than the one you already have.
+              </p>
             </div>
           </div>
         </section>
