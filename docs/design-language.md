@@ -74,12 +74,20 @@ holding the photograph, and a `.plate__scrim` gradient that protects type. If a 
 missing or fails to load, JS adds `.plate--noimg` and the built ground shows — the page still reads
 as art-directed rather than broken.
 
-The hero is art-directed per breakpoint: a portrait master for phones and a landscape crop above
+The hero is art-directed per breakpoint: a portrait crop for phones and a landscape crop above
 720px, via `<picture>` with matching `<link rel=preload media=...>` so the LCP image is the one
 actually used.
 
-Photography rules: documentary, cool-dark with warm counterpoints, no faces, and **no
-manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
+Photography rules: documentary, no faces, and **no frame a single maker owns** — badges on
+parked cars are fine, a showroom under its own pylon sign is not. See `media/CREDITS.md` for
+the credit list. Later plates are cool-dark with warm counterpoints; the hero is daylight, an
+open aisle down a lot with the rows facing in.
+
+A bright hero costs more scrim than a dark one, not less, because white type has to hold over
+lit paintwork. The composition does most of that work: the aisle gives the headline and the
+worklog a calm ground, so the gradient only has to carry the eyebrow across the front row. The
+hero also lifts the worklog's timestamp and action off the muted-on-dark tokens, which are
+calibrated against a flat dark ground rather than a photograph in full daylight.
 
 ## Component rules
 
@@ -96,6 +104,15 @@ manufacturer logos** — see `media/CREDITS.md` for why and for the credit list.
   figure. Figures are illustrative. The grid may scroll horizontally; it does not become cards.
 - **Negotiation thread:** hairline-separated messages, no chat bubbles. Dealer in `--on-dark-soft`,
   agent in `--on-dark`, and the message where the deal closed carries a 2px teal spine.
+- **Hero worklog:** the artifact on the hero photograph is a typeset record of what the agent did on
+  one real search — hairline rows of timestamp, action and figure — not an interface. It has no
+  window chrome, no avatars, no composing caret and no live state, which is what separates it from
+  the hero UI mockup in the anti-patterns list. It reads as a ledger, so it obeys the ledger's
+  rules: rows size to their own content, nothing animates height, nothing is masked, and the entry
+  where the buyer approved carries the same teal spine as the closing message in the thread. It
+  carries breadth — six dealers worked at once, a counter answered at 11:26pm, the buyer approving
+  the last number — and hands depth off to the negotiation thread rather than restating it. Below
+  720px the timestamp takes its own line and the log folds to three entries.
 - **Pricing:** one figure at `clamp(74px,12vw,164px)`, the struck previous price beside it, and
   inclusions as a plain hairline list. Never plan cards.
 - **Forms:** on dark, the email input is a bottom hairline only, no filled box; focus moves the
@@ -164,5 +181,5 @@ gradients, novelty copy, and decorative navigation.
 - Serif type, or display type above weight 500
 - Teal on anything that is not money
 - Feature-icon grids, plan cards, floating product screenshots, hero UI mockups
-- Manufacturer logos in photography
+- Photography a single manufacturer owns — its showroom, facade, signage or an all-one-marque row
 - Unlabeled illustrative figures

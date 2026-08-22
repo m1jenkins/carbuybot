@@ -44,11 +44,22 @@ admin review. Design-system source lives in `.styleseed/` and
   When walking the marketing page, fill the email field only if you intend to
   start checkout. Prefer `APP_DEMO_MODE=true` and the `/preview/*` routes for
   UI review.
-- Hero thread animation, deal-sheet row reveals, and scroll plates are
-  `IntersectionObserver`-driven and pause offscreen or under
-  `prefers-reduced-motion`. If motion looks static, that is expected.
+- Hero worklog rows, deal-sheet row reveals, and scroll plates use
+  `IntersectionObserver`. Reveals stay on after they enter view; plates
+  pause offscreen or under `prefers-reduced-motion`. If motion looks
+  static, that is expected.
 - Do not enable Stripe Tax, live keys, subscriptions, saved cards, or Connect.
   Phase 1 Checkout is hosted `mode: "payment"` only. Off-session invoicing is
   documented in `docs/stripe-integration-plan.md` and is not wired.
 - Hosted setup (Supabase migrations, admin roles, Stripe Prices, webhooks)
   is Mason-only. Follow `docs/setup-phase-1-portal.md`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

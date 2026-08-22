@@ -34,8 +34,7 @@ export function LandingPage() {
 
       <main id="main">
 
-        {/* Hero: cinematic plate + the live email thread as the product artifact.
-            The thread is decorative and desktop-only; #negotiation carries the real one. */}
+        {/* Hero: cinematic plate + a dated worklog of one real search */}
         <section className="hero plate" id="top">
           <div className="plate__media">
             <picture>
@@ -60,49 +59,43 @@ export function LandingPage() {
               </div>
             </div>
 
-            <aside className="hero-demo" id="hero-demo" aria-hidden="true">
-              <div className="hero-demo__head">
-                <span className="label">Your agent, emailing a dealer</span>
-                <p>Re: 2025 Genesis GV80 3.5T Prestige</p>
+            <aside className="hero-log" aria-labelledby="hero-log-h">
+              <div className="hero-log__head">
+                <h2 className="label" id="hero-log-h">What your agent did, on one real search</h2>
+                <p>2025 Genesis GV80 3.5T Prestige <span aria-hidden="true">&middot;</span> six dealers, about a day</p>
               </div>
-              <div className="hero-demo__thread">
-                <div className="msg msg--dealer" data-beat>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Dealer</span>
-                    <p>I received your offer of $60,183 plus tax and title. I&rsquo;ll review it with my management team and see how close we can get.</p>
-                  </div></div>
-                </div>
-                <div className="msg msg--compose" data-compose>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Your agent</span>
-                    <span className="caret"></span>
-                  </div></div>
-                </div>
-                <div className="msg msg--agent" data-beat>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Your agent</span>
-                    <p>We&rsquo;ll look at $62,700. No deposit for now &mdash; send pricing on those four items. Also, can you arrange shipping to Dallas?</p>
-                  </div></div>
-                </div>
-                <div className="msg msg--dealer" data-beat>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Dealer</span>
-                    <p>If we can close at $62,700 today, my manager will throw in all four accessories at no charge. We&rsquo;ll cover transport to Dallas.</p>
-                  </div></div>
-                </div>
-                <div className="msg msg--compose" data-compose>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Your agent</span>
-                    <span className="caret"></span>
-                  </div></div>
-                </div>
-                <div className="msg msg--agent msg--close" data-beat>
-                  <div className="msg__clip"><div className="msg__pad">
-                    <span className="who">Your agent</span>
-                    <p>Signed at <span className="num money">$62,700</span> out the door, with $1,380 of accessories included. Mike never walked into the store.</p>
-                  </div></div>
-                </div>
-              </div>
+              <ol className="hero-log__list">
+                <li className="logrow rv">
+                  <span className="logrow__t num">Thu 9:02 am</span>
+                  <span className="logrow__a">Sent one opening offer to all six dealers</span>
+                  <span className="logrow__v num">$60,183</span>
+                </li>
+                <li className="logrow logrow--fold rv" style={{ "--d": "80ms" } as CSSProperties}>
+                  <span className="logrow__t num">Thu 1:47 pm</span>
+                  <span className="logrow__a">Asked the four who replied what each trim includes</span>
+                </li>
+                <li className="logrow logrow--fold rv" style={{ "--d": "160ms" } as CSSProperties}>
+                  <span className="logrow__t num">Thu 6:20 pm</span>
+                  <span className="logrow__a">Dropped the two dealers with no matching car</span>
+                </li>
+                <li className="logrow rv" style={{ "--d": "240ms" } as CSSProperties}>
+                  <span className="logrow__t num">Thu 11:26 pm</span>
+                  <span className="logrow__a">Answered a counter at night, and declined the deposit</span>
+                  <span className="logrow__v num">$62,700</span>
+                </li>
+                <li className="logrow logrow--fold rv" style={{ "--d": "320ms" } as CSSProperties}>
+                  <span className="logrow__t num">Fri 8:04 am</span>
+                  <span className="logrow__a">Had four accessories added at no charge</span>
+                  <span className="logrow__v num">$1,380</span>
+                </li>
+                <li className="logrow logrow--close rv" style={{ "--d": "400ms" } as CSSProperties}>
+                  <span className="logrow__t num">Fri 2:31 pm</span>
+                  <span className="logrow__a">Sent Mike the final numbers to approve</span>
+                  <span className="logrow__v num money">$62,700</span>
+                </li>
+              </ol>
+              <p className="cap hero-log__foot">One real search, August 2026. Mike approved the last line himself,
+                and never walked into the store.</p>
             </aside>
           </div>
         </section>

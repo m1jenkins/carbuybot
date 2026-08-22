@@ -87,7 +87,7 @@ ul,ol{margin:0;padding:0;list-style:none}
 }
 .dark .label,.plate .label{color:var(--on-dark-mute)}
 .cap{font-size:13px;line-height:1.55;color:var(--meta)}
-.dark .cap{color:var(--on-dark-mute)}
+.dark .cap,.plate .cap{color:var(--on-dark-mute)}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .money{color:var(--money)}
 .dark .money,.plate .money{color:var(--money-dark)}
@@ -138,7 +138,16 @@ ul,ol{margin:0;padding:0;list-style:none}
 .plate__media{position:absolute;inset:-1px;z-index:1}
 .plate__media picture{display:contents}
 .plate__media img{width:100%;height:100%;object-fit:cover;object-position:50% 58%}
-.hero .plate__media img{object-position:50% 46%}
+.hero .plate__media img{object-position:50% 50%}
+/* daylight lot fallback: slightly lifted asphalt so a missing photo is not pitch black */
+.hero.plate{
+  background-color:#1C2124;
+  background-image:
+    radial-gradient(118% 86% at 20% 6%, #4A5560 0%, rgba(74,85,96,0) 58%),
+    radial-gradient(74% 58% at 86% 16%, #5A5044 0%, rgba(90,80,68,0) 55%),
+    radial-gradient(120% 70% at 50% 108%, #2C3236 0%, rgba(44,50,54,0) 62%),
+    linear-gradient(180deg,#2A3036 0%,#1C2124 56%,#14181B 100%);
+}
 .plate__scrim{position:absolute;inset:0;z-index:3;pointer-events:none}
 .plate__body{position:relative;z-index:4}
 
@@ -163,8 +172,8 @@ ul,ol{margin:0;padding:0;list-style:none}
 .hero{min-height:min(100svh,940px);height:auto;display:flex;align-items:stretch}
 .hero .plate__scrim{
   background:
-    linear-gradient(180deg,rgba(8,9,10,.58) 0%,rgba(8,9,10,.12) 26%,rgba(8,9,10,.28) 52%,rgba(8,9,10,.9) 100%),
-    linear-gradient(90deg,rgba(8,9,10,.62) 0%,rgba(8,9,10,.18) 46%,rgba(8,9,10,.55) 100%);
+    linear-gradient(180deg,rgba(8,9,10,.42) 0%,rgba(8,9,10,.07) 20%,rgba(8,9,10,.3) 34%,rgba(8,9,10,.5) 56%,rgba(8,9,10,.86) 100%),
+    linear-gradient(90deg,rgba(8,9,10,.54) 0%,rgba(8,9,10,.04) 46%,rgba(8,9,10,.22) 100%);
 }
 .hero .plate__body{
   width:100%;min-height:min(100svh,940px);
@@ -173,77 +182,48 @@ ul,ol{margin:0;padding:0;list-style:none}
   padding-block:clamp(96px,12vh,128px) clamp(36px,6vh,72px);
 }
 .hero-copy{min-width:0}
-/* the eyebrow can land on the headlights — it needs more than the muted tone */
-.hero .label{color:rgba(242,241,238,.74);text-wrap:balance}
+/* the eyebrow lands on the lit fronts of the front row, so it takes the full
+   on-dark tone rather than the muted one the other plates use */
+.hero .label{color:var(--on-dark);text-wrap:balance}
 .hero .d1{max-width:min(14ch,100%);margin-top:18px;font-size:clamp(36px,5.2vw,76px)}
 .hero .d1 span{display:block}
 .hero .lede{max-width:min(36ch,100%);margin-top:22px;overflow-wrap:break-word}
 .hero-act{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;margin-top:32px}
 
-/* live email thread — the product artifact, on the photograph */
-.hero-demo{min-width:0;align-self:end}
-.hero-demo__head{padding-bottom:16px;border-bottom:1px solid var(--rule-dark)}
-.hero-demo__head .label{color:rgba(242,241,238,.84)}
-.hero-demo__head p{
+/* the agent's worklog — a dated record of one real search, on the photograph.
+   Rows are hairline-ruled and size to their own content. Nothing animates
+   height and nothing is masked, so no entry can ever be clipped or ghosted.
+   --spine is the gutter the closing entry's teal rule lives in; every part of
+   the log reserves it, so one text edge runs down the whole block while the
+   hairlines still span the full column. */
+.hero-log{--spine:19px;min-width:0;align-self:end}
+.hero-log__head{padding:0 0 15px var(--spine);border-bottom:1px solid var(--rule-dark)}
+.hero-log__head .label{color:rgba(242,241,238,.84)}
+.hero-log__head p{
   margin-top:10px;font-size:16px;line-height:1.35;color:rgba(242,241,238,.9);
   letter-spacing:-.012em;
 }
-.hero-demo__thread{
-  margin:0;display:flex;flex-direction:column;justify-content:flex-end;
-  max-height:min(26rem,48vh);overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 56px);
-  mask-image:linear-gradient(180deg,transparent 0,#000 56px);
+.hero-log__list{display:grid}
+.logrow{
+  display:grid;grid-template-columns:6.2rem minmax(0,1fr) auto;
+  align-items:baseline;column-gap:22px;
+  padding:13px 0 13px var(--spine);border-bottom:1px solid var(--rule-dark-2);
 }
-.hero-demo .msg{
-  display:grid;grid-template-rows:0fr;opacity:0;flex:none;
-  transform:translate3d(0,14px,0);
-  border-bottom:1px solid transparent;
-  transition:
-    opacity .58s var(--ease),
-    transform .58s var(--ease),
-    grid-template-rows .58s var(--ease),
-    border-color .58s var(--ease);
+/* the muted and soft tokens are calibrated against a flat dark ground; the log
+   sits on lit car roofs, so the timestamp and action take a lighter tone */
+.logrow__t{font-size:12.5px;line-height:1.5;color:rgba(242,241,238,.72);white-space:nowrap}
+.logrow__a{font-size:15.5px;line-height:1.45;color:rgba(242,241,238,.9)}
+.logrow__v{font-size:15.5px;line-height:1.45;color:var(--on-dark);white-space:nowrap}
+/* the entry where the deal closed carries the thread's teal spine */
+.logrow--close{border-bottom:0;position:relative}
+.logrow--close::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--money-dark);
 }
-html:not(.js) .hero-demo .msg[data-beat]{
-  grid-template-rows:1fr;opacity:1;transform:none;border-bottom-color:var(--rule-dark-2);
-}
-html:not(.js) .hero-demo .msg[data-beat] .msg__pad{padding:16px 0}
-html:not(.js) .hero-demo .msg[data-compose]{display:none}
-html:not(.js) .hero-demo .msg--close{border-left-color:var(--money-dark)}
-.hero-demo .msg__clip{overflow:hidden;min-height:0}
-.hero-demo .msg__pad{padding:0;display:grid;gap:8px}
-.hero-demo .msg.is-in{
-  grid-template-rows:1fr;opacity:1;transform:none;
-  border-bottom-color:var(--rule-dark-2);
-}
-.hero-demo .msg.is-in .msg__pad{padding:16px 0}
-.hero-demo .msg p{font-size:16.5px;line-height:1.5;max-width:none;color:var(--on-dark-soft)}
-.hero-demo .msg--agent p{color:var(--on-dark)}
-.hero-demo .msg--close{
-  border-left:2px solid transparent;padding-left:0;
-  border-bottom-color:transparent;
-}
-.hero-demo .msg--close.is-in{
-  border-left-color:var(--money-dark);
-}
-.hero-demo .msg--close .msg__pad{padding-left:19px}
-.hero-demo .msg--close p{font-size:17px}
-.hero-demo .msg--close.is-in .money{
-  animation:moneyIn .7s var(--ease) both;
-  animation-delay:.12s;
-}
-.hero-demo .msg--compose .msg__pad{
-  display:flex;align-items:center;gap:12px;padding-block:13px;
-}
-.hero-demo .caret{
-  display:block;width:2px;height:15px;background:var(--on-dark);
-  animation:caret 1.05s steps(1) infinite;
-}
-@keyframes caret{50%{opacity:0}}
-@keyframes moneyIn{
-  from{opacity:.35;filter:blur(6px)}
-  to{opacity:1;filter:blur(0)}
-}
+.logrow--close .logrow__a{color:var(--on-dark)}
+.logrow--close .logrow__v{font-size:17px}
+.hero-log__foot{margin-top:16px;padding-left:var(--spine);max-width:48ch}
+/* rows ride the page's own reveal, over a shorter rise and a quicker beat */
+.hero-log .rv{--rise:10px;transition-duration:.62s}
 
 .scroll-cue{display:none}
 
@@ -857,8 +837,9 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
 .mcta .btn{height:44px;padding:0 20px;font-size:14px}
 
 /* ── reveal ────────────────────────────────────────────────────────── */
-.rv{opacity:0;transform:translateY(24px);transition:opacity .95s var(--ease),transform .95s var(--ease);transition-delay:var(--d,0ms)}
+.rv{opacity:0;transform:translateY(var(--rise,24px));transition:opacity .95s var(--ease),transform .95s var(--ease);transition-delay:var(--d,0ms)}
 .rv.in{opacity:1;transform:none}
+html:not(.js) .rv{opacity:1;transform:none}
 
 /* ── responsive ────────────────────────────────────────────────────── */
 @media(max-width:1000px){
@@ -879,17 +860,14 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .step--flip .step__fig{order:0}
   .step__fig{aspect-ratio:16/10}
   /* the hero collapses with every other two-column layout: below this the copy column
-     is too narrow to carry the headline beside the thread */
+     is too narrow to carry the headline beside the worklog */
   .hero{min-height:100svh}
   .hero .plate__body{
     grid-template-columns:minmax(0,1fr);gap:28px;align-content:end;
     min-height:100svh;padding-block:100px 40px;
   }
-  .hero .d1{max-width:min(18ch,100%);font-size:clamp(32px,7.6vw,52px)}
-  .hero .lede{max-width:min(42ch,100%)}
-  /* stacked under the copy the thread is unreadable and crowds the plate out of the
-     hero — the real transcript is one section down, where the CTA already points */
-  .hero-demo{display:none}
+  .hero .d1{max-width:none;font-size:clamp(32px,7.6vw,52px)}
+  .hero .lede{max-width:none}
 }
 @media(max-width:720px){
   .review-fixture-note{display:grid;gap:3px;text-align:left}
@@ -954,22 +932,31 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   .hdr .wrap{gap:12px}
   .mark{font-size:14px;gap:8px}
   .hdr .btn{padding:0 14px;font-size:13px;height:38px;flex:none}
-  /* two lines of tracked caps land straight on the headlights here and push the
-     headline off the plate — the trust rail one screen down states the same offer */
-  .hero .hero-copy>.label{display:none}
-  .hero .d1{font-size:clamp(30px,8vw,42px);margin-top:0}
+  .hero .d1{font-size:clamp(30px,8vw,42px);margin-top:14px}
   .hero .d1 span{display:inline}
   .hero .lede{margin-top:16px;font-size:16px}
-  .hero-act{margin-top:26px}
-  /* portrait: the copy block starts lower now, so the wash can ease off the
-     headlights and let the car read instead of protecting a thread that is gone */
+  .hero-act{margin-top:22px}
+  /* portrait: the copy starts near the top here, so the wash carries the eyebrow
+     before opening up over the lot and closing again under the log */
   .hero .plate__scrim{background:linear-gradient(180deg,
-    rgba(8,9,10,.34) 0%,
-    rgba(8,9,10,.04) 14%,
-    rgba(8,9,10,.06) 34%,
-    rgba(8,9,10,.42) 52%,
-    rgba(8,9,10,.86) 72%,
-    rgba(8,9,10,.95) 100%)}
+    rgba(8,9,10,.44) 0%,
+    rgba(8,9,10,.34) 16%,
+    rgba(8,9,10,.26) 34%,
+    rgba(8,9,10,.5) 54%,
+    rgba(8,9,10,.8) 76%,
+    rgba(8,9,10,.9) 100%)}
+  /* portrait: the timestamp takes its own line, since an entry would otherwise
+     wrap twice. The log folds to the three entries that carry the whole arc —
+     six dealers at once, a counter answered at night, and Mike approving the
+     last number — so the hero still lands inside one screen. */
+  .hero-log{--spine:15px}
+  .hero-log__head{padding-bottom:12px}
+  .logrow{grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:2px;padding:10px 0 10px var(--spine)}
+  .logrow__t{grid-column:1/-1}
+  .logrow__a,.logrow__v{font-size:15px}
+  .logrow--close .logrow__v{font-size:16px}
+  .logrow--fold{display:none}
+  .hero-log__foot{margin-top:13px}
   .form .btn{width:100%}
   .grid th,.grid td{padding:11px 10px;font-size:13px}
   .grid .c-note{font-size:12.5px}
@@ -1013,12 +1000,6 @@ footer{background:var(--ink);color:var(--on-dark);padding-block:clamp(52px,6vw,8
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
   .rv{opacity:1;transform:none}
   .plate__media{transform:none!important}
-  .hero-demo .msg{opacity:1;transform:none;grid-template-rows:1fr;border-bottom-color:var(--rule-dark-2)}
-  .hero-demo .msg[data-compose]{display:none}
-  .hero-demo .msg__pad{padding:16px 0}
-  .hero-demo .msg--close{border-left-color:var(--money-dark)}
-  .hero-demo .msg--close .money{filter:none;animation:none}
-  .hero-demo__thread{max-height:none;-webkit-mask-image:none;mask-image:none}
   .sheet .grid tbody tr,.sheet .grid tfoot tr,.sheet .grid tfoot .c-otd,
   .sheet .grid .cell--live::after{opacity:1;animation:none!important}
   .sheet__live i{animation:none;opacity:.6}
