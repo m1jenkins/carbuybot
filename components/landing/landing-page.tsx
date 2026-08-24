@@ -48,8 +48,8 @@ export function LandingPage() {
               <span className="label">First 100 checkout reservations are $349 instead of $399</span>
               <h1 className="d1"><span>Let a bot haggle</span> <span>for your next car</span></h1>
               <p className="lede">
-                Tell us the car you want. Your agent finds it at dealers near you, emails all of them, and negotiates
-                the out-the-door price with every one of them at the same time.
+                Tell us the car you want. Your agent finds it at dealers near you, emails them all, and negotiates
+                every out-the-door price at once.
               </p>
               <div className="hero-act">
                 <a className="btn btn--light" href="#start">Start my search</a>

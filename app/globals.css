@@ -859,12 +859,12 @@ html:not(.js) .rv{opacity:1;transform:none}
   .step{grid-template-columns:1fr;gap:26px}
   .step--flip .step__fig{order:0}
   .step__fig{aspect-ratio:16/10}
-}
-@media(max-width:900px){
+  /* the hero collapses with every other two-column layout: below this the copy column
+     is too narrow to carry the headline beside the worklog */
   .hero{min-height:100svh}
   .hero .plate__body{
     grid-template-columns:minmax(0,1fr);gap:28px;align-content:end;
-    min-height:100svh;padding-block:100px 32px;
+    min-height:100svh;padding-block:100px 40px;
   }
   .hero .d1{max-width:none;font-size:clamp(32px,7.6vw,52px)}
   .hero .lede{max-width:none}
@@ -985,6 +985,15 @@ html:not(.js) .rv{opacity:1;transform:none}
   table.cmp td.us{background:var(--paper-2);padding:10px 12px;margin:4px -12px;border-left:2px solid var(--ink)}
   table.cmp td.us::before{color:var(--ink)}
   table.cmp .cost{font-size:15.5px}
+}
+/* landscape phones have no vertical room for a full-height plate: sizing the hero to
+   its copy keeps the actions above the fold instead of pushing them past it */
+@media(max-width:1000px) and (max-height:560px){
+  .hero,.hero .plate__body{min-height:0}
+  .hero .plate__body{padding-block:86px 34px}
+  .hero .d1{font-size:clamp(28px,6vw,38px)}
+  .hero .lede{margin-top:14px}
+  .hero-act{margin-top:22px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
